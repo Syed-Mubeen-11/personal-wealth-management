@@ -1,0 +1,48 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Vite / build
+dist/
+build/
+.vite/
+
+# Env
+.env
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Tests / coverage
+coverage/
+
+# Misc
+*.tgz
+*.cache
+
+# Frontend specific
+frontend/node_modules/
+frontend/.env
+frontend/dist/
+
+# Backend specific
+backend/node_modules/
+backend/.env
+backend/dist/
+
+# Lock files (optional - uncomment to ignore)
+# package-lock.json
+# pnpm-lock.yaml
+# yarn.lock
