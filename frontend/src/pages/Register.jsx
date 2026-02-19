@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   TrendingUp,
   DollarSign,
@@ -252,10 +253,10 @@ export default function Register() {
           </form>
 
           <p className="text-center text-sm text-gray-600 mt-6">
-            Already have an account?{" "}
-            <span className="text-[#1B3C53] font-medium cursor-pointer hover:underline">
+            Already have an account? {" "}
+            <Link to="/login" className="text-[#1B3C53] font-medium hover:underline">
               Log in
-            </span>
+            </Link>
           </p>
         </div>
       </div>
