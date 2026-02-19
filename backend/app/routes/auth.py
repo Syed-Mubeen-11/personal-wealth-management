@@ -7,6 +7,8 @@ from app.core.security import hash_password
 from app.core.security import verify_password
 from app.core.auth import create_access_token
 from app.core.auth import get_current_user
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import Depends
 
 router = APIRouter()
 
@@ -46,11 +48,6 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         "message": "User registered successfully",
         "user_id": new_user.id
     }
-
-
-
-from fastapi.security import OAuth2PasswordRequestForm
-from fastapi import Depends
 
 
 @router.post("/login")
