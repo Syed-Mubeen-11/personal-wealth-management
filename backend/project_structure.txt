@@ -1,0 +1,44 @@
+Folder PATH listing for volume Windows
+Volume serial number is A4AC-9906
+C:.
+|   main.py
+|   project_structure.txt
+|   README.md
+|   
++---app
+|   |   __init__.py
+|   |   
+|   +---core
+|   |   |   celery_app.py
+|   |   |   database.py
+|   |   |   security.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           celery_app.cpython-313.pyc
+|   |           database.cpython-313.pyc
+|   |           security.cpython-313.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---models
+|   |   |   models.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           models.cpython-313.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---services
+|   |   |   tasks.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           tasks.cpython-313.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   \---__pycache__
+|           __init__.cpython-313.pyc
+|           
+\---__pycache__
+        main.cpython-313.pyc
+        
