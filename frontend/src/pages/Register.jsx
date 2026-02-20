@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   TrendingUp,
   DollarSign,
@@ -40,12 +41,30 @@ export default function Register() {
   const isFormValid =
     form.name && isEmailValid && isPasswordValid && isConfirmValid && form.risk;
 
-  const handleSubmit = (e) => {
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
+    setError("");
 
-    setShowModal(true);
-    setTimeout(() => setShowModal(false), 2000);
+    try {
+      await axios.post("http://localhost:8000/register", {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        riskprofile: form.risk,
+      });
+
+      setShowModal(true);
+      setTimeout(() => {
+        setShowModal(false);
+        navigate("/login");
+      }, 2000);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Registration failed");
+    }
   };
 
   const riskOptions = [
@@ -56,8 +75,8 @@ export default function Register() {
       icon: Shield,
     },
     {
-      id: "balanced",
-      title: "Balanced",
+      id: "moderate",
+      title: "Moderate",
       desc: "Moderate risk with steady growth",
       icon: Scale,
     },
@@ -223,11 +242,10 @@ export default function Register() {
                     <div
                       key={item.id}
                       onClick={() => setForm({ ...form, risk: item.id })}
-                      className={`p-4 rounded-xl border-2 cursor-pointer text-center transition-all duration-200 ${
-                        form.risk === item.id
-                          ? "border-[#1B3C53] bg-[#E3E3E3]"
-                          : "border-gray-200 hover:border-[#234C6A]"
-                      }`}
+                      className={`p-4 rounded-xl border-2 cursor-pointer text-center transition-all duration-200 ${form.risk === item.id
+                        ? "border-[#1B3C53] bg-[#E3E3E3]"
+                        : "border-gray-200 hover:border-[#234C6A]"
+                        }`}
                     >
                       <Icon className="mx-auto mb-2 text-[#234C6A]" size={24} />
                       <h4 className="font-semibold">{item.title}</h4>
@@ -238,15 +256,17 @@ export default function Register() {
               </div>
             </div>
 
+            {/* ERROR MESSAGE */}
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
             {/* BUTTON */}
             <button
               type="submit"
               disabled={!isFormValid}
-              className={`w-full py-3 rounded-lg font-medium transition-all duration-300 ${
-                isFormValid
-                  ? "bg-[#1B3C53] text-white hover:bg-[#234C6A]"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
+              className={`w-full py-3 rounded-lg font-medium transition-all duration-300 ${isFormValid
+                ? "bg-[#1B3C53] text-white hover:bg-[#234C6A]"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
             >
               Register
             </button>
