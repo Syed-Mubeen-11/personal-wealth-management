@@ -93,9 +93,11 @@ const Login = ({ setIsAuthenticated }) => {
         {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
           Don't have an account?{" "}
-          <span className="text-indigo-600 cursor-pointer hover:underline">
-            Register here
-          </span>
+          <span
+          onClick={() => navigate("/register")}
+          className="text-indigo-600 cursor-pointer hover:underline">
+          Register here
+        </span>
         </p>
 
       </div>
