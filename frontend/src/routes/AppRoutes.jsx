@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import Login from "../pages/Login";
+import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import Portfolio from "../pages/Portfolio";
 import Transactions from "../pages/Transactions";
@@ -22,7 +23,11 @@ const AppRoutes = ({ isAuthenticated, setIsAuthenticated }) => {
     path="/login"
     element={<Login setIsAuthenticated={setIsAuthenticated} />}
   />
-
+   {/* 👇 NEW REGISTER ROUTE */}
+      <Route
+        path="/register"
+        element={<Register />}
+      />
   {/* Protected Routes Group */}
   <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
 
