@@ -34,9 +34,9 @@ export default function Dashboard() {
                     <Link to="/" className="flex items-center gap-3 p-3 bg-[#234C6A] rounded-lg">
                         <Home size={20} /> Dashboard
                     </Link>
-                    <div className="flex items-center gap-3 p-3 text-gray-300 hover:text-white cursor-pointer">
-                        <PieChart size={20} /> Portfolio
-                    </div>
+                    <Link to="/profile" className="flex items-center gap-3 p-3 text-gray-300 hover:text-white rounded-lg hover:bg-[#234C6A] transition">
+                        <PieChart size={20} /> Profile & Risk
+                    </Link>
                 </nav>
                 <button
                     onClick={handleLogout}
