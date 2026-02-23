@@ -132,7 +132,7 @@ export default function Register() {
         />
 
         <div className="relative z-10 text-center max-w-xl">
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6 text-white">
             Personalized Wealth Management
             <br />& Goal Tracker
           </h1>
