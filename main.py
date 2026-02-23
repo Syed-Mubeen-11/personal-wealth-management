@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import Base, engine, SessionLocal
-import models, schemas, crud
+import models, schemas, backend.crud as crud
 from auth import verify_password, create_token
 import requests
 
