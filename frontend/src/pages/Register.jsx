@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   TrendingUp,
   DollarSign,
@@ -39,12 +41,30 @@ export default function Register() {
   const isFormValid =
     form.name && isEmailValid && isPasswordValid && isConfirmValid && form.risk;
 
-  const handleSubmit = (e) => {
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
+    setError("");
 
-    setShowModal(true);
-    setTimeout(() => setShowModal(false), 2000);
+    try {
+      await axios.post("http://localhost:8000/register", {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        riskprofile: form.risk,
+      });
+
+      setShowModal(true);
+      setTimeout(() => {
+        setShowModal(false);
+        navigate("/login");
+      }, 2000);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Registration failed");
+    }
   };
 
   const riskOptions = [
@@ -55,8 +75,8 @@ export default function Register() {
       icon: Shield,
     },
     {
-      id: "balanced",
-      title: "Balanced",
+      id: "moderate",
+      title: "Moderate",
       desc: "Moderate risk with steady growth",
       icon: Scale,
     },
@@ -237,6 +257,11 @@ export default function Register() {
               </div>
             </div>
 
+            {/* ERROR MESSAGE */}
+            {error && (
+              <p className="text-red-500 text-sm text-center">{error}</p>
+            )}
+
             {/* BUTTON */}
             <button
               type="submit"
@@ -253,9 +278,12 @@ export default function Register() {
 
           <p className="text-center text-sm text-gray-600 mt-6">
             Already have an account?{" "}
-            <span className="text-[#1B3C53] font-medium cursor-pointer hover:underline">
+            <Link
+              to="/login"
+              className="text-[#1B3C53] font-medium hover:underline"
+            >
               Log in
-            </span>
+            </Link>
           </p>
         </div>
       </div>
