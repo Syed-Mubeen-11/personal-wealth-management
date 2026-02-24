@@ -1,13 +1,23 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import Base, engine, SessionLocal
-import models, schemas, crud
+import models, schemas, backend.crud as crud
 from auth import verify_password, create_token
 import requests
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# Allow CORS for local frontend during development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost:5174"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db():
     db = SessionLocal()

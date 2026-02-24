@@ -15,8 +15,8 @@ class User(Base):
     phone_number = Column(String, nullable=True)
     residential_address = Column(String, nullable=True)
     date_of_birth = Column(Date, nullable=True)
-    risk_profile = Column(String, default="moderate")
-    kyc_status = Column(String, default="unverified")
+    riskprofile = Column(String, default="moderate")
+    kycstatus = Column(String, default="unverified")
 
     # Relationships
     transactions = relationship("Transaction", back_populates="owner")

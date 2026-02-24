@@ -1,0 +1,138 @@
+:root {
+  --primary: #1B3C53;
+  --secondary: #234C6A;
+  --light: #2f5d7c;
+  --bg: #f4f7fa;
+  --white: #ffffff;
+}
+
+/* Layout */
+.dashboard {
+  display: flex;
+  font-family: Arial, sans-serif;
+  background-color: var(--bg);
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background-color: var(--primary);
+  color: white;
+  padding: 20px;
+}
+
+.logo {
+  margin-bottom: 30px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  padding: 12px 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.sidebar li:hover,
+.sidebar .active {
+  background-color: var(--secondary);
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  padding: 30px;
+}
+
+h1 {
+  color: var(--primary);
+  margin-bottom: 25px;
+}
+
+/* Grid */
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Card */
+.card {
+  background: var(--white);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.card h2 {
+  margin-bottom: 15px;
+  color: var(--primary);
+}
+
+/* Form */
+.card label {
+  display: block;
+  margin-top: 10px;
+  font-weight: 500;
+}
+
+.card input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+.card input:focus {
+  border-color: var(--secondary);
+}
+
+/* Radio */
+.radio-group label {
+  display: block;
+  margin-top: 10px;
+}
+
+/* Buttons */
+.buttons {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.cancel-btn {
+  padding: 8px 16px;
+  margin-right: 10px;
+  border: 1px solid var(--primary);
+  background: white;
+  color: var(--primary);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.save-btn {
+  padding: 8px 16px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.save-btn:hover {
+  background-color: var(--secondary);
+}
+
+/* Footer */
+footer {
+  margin-top: 30px;
+  text-align: center;
+  color: gray;
+  font-size: 14px;
+}
