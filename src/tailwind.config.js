@@ -2,7 +2,7 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,jsx,ts,tsx}", // this makes Tailwind scan all JS/TS/JSX/TSX files
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {},
