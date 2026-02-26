@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
@@ -9,39 +9,46 @@ import Goals from "../pages/Goals";
 import Reports from "../pages/Reports";
 import Profile from "../pages/Profile";
 
-const AppRoutes = ({ isAuthenticated, setIsAuthenticated }) => {
+const AppRoutes = ({ setIsAuthenticated }) => {
+
+  const token = localStorage.getItem("token");
+
   return (
     <Routes>
 
-  {/* Public Routes */}
-  <Route
-    path="/"
-    element={<Login setIsAuthenticated={setIsAuthenticated} />}
-  />
-  
-  <Route
-    path="/login"
-    element={<Login setIsAuthenticated={setIsAuthenticated} />}
-  />
-   {/* 👇 NEW REGISTER ROUTE */}
+      {/* Public Routes */}
+
+      <Route
+        path="/"
+        element={token ? <Navigate to="/dashboard" replace /> : 
+          <Login setIsAuthenticated={setIsAuthenticated} />}
+      />
+
+      <Route
+        path="/login"
+        element={token ? <Navigate to="/dashboard" replace /> : 
+          <Login setIsAuthenticated={setIsAuthenticated} />}
+      />
+
       <Route
         path="/register"
-        element={<Register />}
+        element={token ? <Navigate to="/dashboard" replace /> : 
+          <Register />}
       />
-  {/* Protected Routes Group */}
-  <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
 
-    <Route path="/dashboard" element={<Dashboard />} />
-    <Route path="/portfolio" element={<Portfolio />} />
-    <Route path="/transactions" element={<Transactions />} />
-    <Route path="/goals" element={<Goals />} />
-    <Route path="/reports" element={<Reports />} />
-    <Route path="/profile" element={<Profile />} />
+      {/* Protected Routes */}
+      <Route element={<ProtectedRoute />}>
 
-  </Route>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/portfolio" element={<Portfolio />} />
+        <Route path="/transactions" element={<Transactions />} />
+        <Route path="/goals" element={<Goals />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/profile" element={<Profile />} />
 
-</Routes>
+      </Route>
 
+    </Routes>
   );
 };
 

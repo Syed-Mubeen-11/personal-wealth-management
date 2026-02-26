@@ -1,13 +1,40 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import profileImg from "../assets/profile.png";
+import API from "../services/api";
 
 function Profile() {
-  const [risk, setRisk] = useState("moderate");
+
+  const [user, setUser] = useState(null);
+  const [risk, setRisk] = useState("");
+
+  // Fetch logged-in user
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await API.get("/me");
+        setUser(response.data);
+        setRisk(response.data.risk_profile);
+      } catch (error) {
+        console.log("Error fetching user:", error);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const handleSave = async () => {
+  try {
+    await API.put(`/update-risk?risk_profile=${risk}`);
+    alert("Risk profile updated successfully!");
+  } catch (error) {
+    console.log(error);
+    alert("Failed to update risk profile");
+  }
+};
 
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-screen">
 
-      {/* Page Title */}
       <h1 className="text-3xl font-bold text-gray-800 mb-8">
         Profile & Risk Management
       </h1>
@@ -22,10 +49,10 @@ function Profile() {
           />
           <div>
             <h2 className="text-xl font-semibold text-gray-800">
-              Mubeen
+              {user?.name}
             </h2>
             <p className="text-gray-500 text-sm">
-              mubeen@email.com
+              {user?.email}
             </p>
           </div>
         </div>
@@ -35,92 +62,52 @@ function Profile() {
         </button>
       </div>
 
-      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
         {/* LEFT SIDE */}
         <div className="space-y-8">
 
           {/* Personal Details */}
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-      <div className="mb-8">
-        <h3 className="text-xl font-semibold text-gray-800">
-          User Profile Details
-        </h3>
-        <p className="text-sm text-gray-400 mt-1">
-          Keep your information up to date
-        </p>
-      </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold text-gray-800">
+                User Profile Details
+              </h3>
+              <p className="text-sm text-gray-400 mt-1">
+                Keep your information up to date
+              </p>
+            </div>
 
-      <div className="space-y-6">
+            <div className="space-y-6">
 
-        {/* Full Name */}
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-2">
-            Full Name
-          </label>
-          <input
-            type="text"
-            placeholder="Enter your full name"
-            className="border border-gray-300 rounded-xl px-4 py-3
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-          />
-        </div>
+              {/* Full Name */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-600 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={user?.name || ""}
+                  readOnly
+                  className="border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
 
-        {/* Email */}
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-2">
-            Email Address
-          </label>
-          <input
-            type="email"
-            placeholder="Enter your email address"
-            className="border border-gray-300 rounded-xl px-4 py-3
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-          />
-        </div>
+              {/* Email */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-600 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={user?.email || ""}
+                  readOnly
+                  className="border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
 
-        {/* Phone */}
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-2">
-            Phone Number
-          </label>
-          <input
-            type="tel"
-            placeholder="Enter your phone number"
-            className="border border-gray-300 rounded-xl px-4 py-3
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-          />
-        </div>
-
-        {/* Date of Birth */}
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-2">
-            Date of Birth
-          </label>
-          <input
-            type="date"
-            className="border border-gray-300 rounded-xl px-4 py-3
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-          />
-        </div>
-
-        {/* Address */}
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-2">
-            Residential Address
-          </label>
-          <textarea
-            rows="3"
-            placeholder="Enter your residential address"
-            className="border border-gray-300 rounded-xl px-4 py-3
-            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition resize-none"
-          />
-        </div>
-
-      </div>
-
-    </div>
+            </div>
+          </div>
 
           {/* KYC Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center justify-between">
@@ -129,14 +116,15 @@ function Profile() {
                 KYC Status
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Your KYC verification is completed.
+                Your KYC verification is {/*completed*/}pending.
               </p>
             </div>
 
-            <span className="text-green-600 font-medium">
-              ✓ Completed
+            <span className="text-yellow-600 font-medium">
+              {/*✓ Completed*/}pending
             </span>
           </div>
+
         </div>
 
         {/* RIGHT SIDE */}
@@ -193,16 +181,6 @@ function Profile() {
           </div>
 
         </div>
-      </div>
-
-      {/* Bottom Buttons */}
-      <div className="flex justify-end gap-4 mt-10">
-        <button className="px-6 py-2 rounded-lg border border-gray-300 hover:bg-gray-100">
-          Cancel
-        </button>
-        <button className="px-6 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition">
-          Save Changes
-        </button>
       </div>
 
     </div>

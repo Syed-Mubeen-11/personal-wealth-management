@@ -82,3 +82,14 @@ def get_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "risk_profile": current_user.risk_profile
     }
+@router.put("/update-risk")
+def update_risk(
+    risk_profile: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    current_user.risk_profile = risk_profile
+    db.commit()
+    db.refresh(current_user)
+
+    return {"message": "Risk profile updated successfully"}

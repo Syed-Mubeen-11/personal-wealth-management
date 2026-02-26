@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -10,18 +11,24 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [riskProfile, setRiskProfile] = useState("");
 
-  const handleRegister = (e) => {
-    e.preventDefault();
+  const handleRegister = async (e) => {
+  e.preventDefault();
 
-    if (password !== confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
+  try {
+    await API.post("/register", {
+      name,
+      email,
+      password,
+      risk_profile: riskProfile
+    });
 
-    // Since frontend only, just simulate success
-    alert("Registration Successful!");
-    navigate("/login"); // go back to login
-  };
+    alert("Registration successful!");
+    navigate("/login");
+
+  } catch (error) {
+    alert("Registration failed");
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">

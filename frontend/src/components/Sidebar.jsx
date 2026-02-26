@@ -10,14 +10,15 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
-const Sidebar = ({ sidebarOpen, setSidebarOpen, setIsAuthenticated }) => {
+const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);   // 🔥 reset auth
-    navigate("/login");          // 🔥 redirect to login
-  };
+ const handleLogout = () => {
+  localStorage.removeItem("token");   // remove JWT
+  //navigate("/login",{replace: true});     
+  window.location.href="/login"    // redirect
+};
 
   const menuItems = [
     { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },

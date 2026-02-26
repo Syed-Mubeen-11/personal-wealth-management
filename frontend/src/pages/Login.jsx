@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 
 const Login = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
@@ -7,17 +8,30 @@ const Login = ({ setIsAuthenticated }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e) => {
-    e.preventDefault(); // Prevent form reload
+  const handleLogin = async (e) => {
+  e.preventDefault();
 
-    // Hardcoded credentials (temporary)
-    if (email === "mubeen@gmail.com" && password === "1234") {
-      setIsAuthenticated(true);
-      navigate("/dashboard");
-    } else {
-      alert("Invalid email or password");
-    }
-  };
+  try {
+    const formData = new URLSearchParams();
+    formData.append("username", email);
+    formData.append("password", password);
+
+    const response = await API.post("/login", formData, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    });
+
+    const token = response.data.access_token;
+
+    localStorage.setItem("token", token);
+    window.location.reload();
+    //navigate("/dashboard");
+
+  } catch (error) {
+    alert("Invalid credentials");
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
