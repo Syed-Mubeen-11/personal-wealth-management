@@ -8,7 +8,6 @@ class UserCreate(BaseModel):
     password: str
     phone_number: Optional[str] = None
     address: Optional[str] = None
-    date_of_birth: Optional[date] = None
     risk_profile: Optional[str] = "moderate"
 
 class UserResponse(BaseModel):
@@ -17,7 +16,6 @@ class UserResponse(BaseModel):
     email: EmailStr
     phone_number: Optional[str]
     address: Optional[str]
-    date_of_birth: Optional[date]
     risk_profile: str
     kyc_status: bool
     created_at: datetime

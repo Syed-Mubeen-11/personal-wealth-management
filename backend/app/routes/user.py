@@ -19,11 +19,7 @@ def get_db():
 @router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     
-    # print("USER OBJECT:", user)
-    # print("PASSWORD FIELD:", repr(user.password))
-    # print("PASSWORD LENGTH:", len(user.password))
 
-    # hashed = hash_password(user.password)
     # Check if email already exists
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
@@ -36,7 +32,6 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         password=hash_password(user.password),
         phone_number=user.phone_number,
         address=user.address,
-        date_of_birth=user.date_of_birth,
         risk_profile=user.risk_profile
     )
 

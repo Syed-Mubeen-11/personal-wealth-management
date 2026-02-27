@@ -13,7 +13,6 @@ class User(Base):
 
     phone_number = Column(String, nullable=True)
     address = Column(String, nullable=True)
-    date_of_birth = Column(Date, nullable=True)
 
     risk_profile = Column(String, default="moderate")
     kyc_status = Column(Boolean, default=False)
