@@ -12,7 +12,7 @@ import {
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
  const handleLogout = () => {
   localStorage.removeItem("token");   // remove JWT
