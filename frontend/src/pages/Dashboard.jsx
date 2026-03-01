@@ -14,15 +14,15 @@ export default function Dashboard() {
     const [isAuth, setIsAuth] = useState(false);
     const [summary, setSummary] = useState({ balance: 0, income: 0, expense: 0 });
     const [user, setUser] = useState({ name: 'User', email: '' });
-    const [portfolio, setPortfolio] = useState({ summary: { current_value: 0, total_profit: 0 } });
+    const [portfolio, setPortfolio] = useState({ overview: { total_portfolio_value: 0, overall_gain_loss: 0 } });
 
     // --- YOUR API CALLS ---
     const loadData = useCallback(async () => {
         try {
             const [sumRes, userRes, portRes] = await Promise.all([
-                api.get('/summary/'),
+                api.get('/summary'),
                 api.get('/profile/'),
-                api.get('/portfolio/')
+                api.get('/portfolio')
             ]);
             setSummary(sumRes.data);
             setUser(userRes.data);
@@ -77,7 +77,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                         <h3 className="text-gray-500 text-sm mb-1 font-bold uppercase">Total Assets</h3>
-                        <p className="text-3xl font-bold text-[#1B3C53]">${portfolio.summary.current_value?.toLocaleString() || 0}</p>
+                        <p className="text-3xl font-bold text-[#1B3C53]">${portfolio.overview?.total_portfolio_value?.toLocaleString() || 0}</p>
                     </div>
 
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -87,8 +87,8 @@ export default function Dashboard() {
 
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                         <h3 className="text-gray-500 text-sm mb-1 font-bold uppercase">Investment Gain/Loss</h3>
-                        <p className={`text-3xl font-bold ${portfolio.summary.total_profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {portfolio.summary.total_profit >= 0 ? '+' : ''}${portfolio.summary.total_profit?.toLocaleString() || 0}
+                        <p className={`text-3xl font-bold ${portfolio.overview?.overall_gain_loss >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {portfolio.overview?.overall_gain_loss >= 0 ? '+' : ''}${portfolio.overview?.overall_gain_loss?.toLocaleString() || 0}
                         </p>
                     </div>
                 </div>

@@ -10,7 +10,7 @@ function Goals() {
 
     const fetchGoals = async () => {
         try {
-            const res = await api.get('/goals/progress/');
+            const res = await api.get('/goals/progress');
             setGoals(res.data);
         } catch (err) { console.error("Failed to fetch goals"); }
     };
@@ -21,7 +21,7 @@ function Goals() {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post('/goals/', formData);
+            await api.post('/goals', formData);
             alert("Goal Added Successfully!");
             setFormData({ target_name: '', target_amount: '' });
             fetchGoals();

@@ -49,7 +49,7 @@ app.add_middleware(
         "http://localhost:5173", 
         "http://localhost:3000", 
         "http://localhost:5174",
-        "*"
+        
     ],  
     allow_credentials=True,
     allow_methods=["*"],  
@@ -205,67 +205,237 @@ def get_stock_price(symbol: str):
     except:
         raise HTTPException(status_code=404, detail="Invalid symbol")
 
-@app.post("/assets/")
-def buy_asset(asset: AssetCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    db_asset = models.Asset(**asset.dict(), owner_id=user.id)
-    db.add(db_asset)
-    total_cost = asset.quantity * asset.buy_price
+
+# ---------------------------------------------------------
+# TRANSACTIONS CRUD
+# ---------------------------------------------------------
+@app.post("/transactions", response_model=schemas.TransactionResponse)
+def create_transaction(
+    txn: schemas.TransactionCreate, 
+    db: Session = Depends(get_db), 
+    user: models.User = Depends(get_current_user)
+):
+    """
+    Create a transaction and auto-update portfolio.
+    - Buy: Adds to existing asset or creates new one (calculates average cost basis)
+    - Sell: Subtracts from asset, deletes if quantity <= 0
+    - Contribution/Withdrawal: Just records the cash transaction
+    """
+    # Create the transaction record
     db_txn = models.Transaction(
-        amount=-total_cost, 
-        category="Investment", 
-        description=f"Bought {asset.quantity} {asset.symbol}", 
+        transaction_type=txn.transaction_type,
+        asset_symbol=txn.asset_symbol,
+        quantity=txn.quantity,
+        amount=txn.amount,
         owner_id=user.id
     )
     db.add(db_txn)
+
+    # Handle Buy transactions (update portfolio)
+    if txn.transaction_type == "Buy" and txn.asset_symbol and txn.asset_symbol != "Cash":
+        existing_asset = db.query(models.Asset).filter(
+            models.Asset.owner_id == user.id,
+            models.Asset.symbol == txn.asset_symbol.upper()
+        ).first()
+
+        if existing_asset:
+            # Recalculate average cost basis
+            total_old_value = existing_asset.quantity * existing_asset.buy_price
+            total_new_value = txn.quantity * (txn.amount / txn.quantity) if txn.quantity else txn.amount
+            new_quantity = existing_asset.quantity + txn.quantity
+            new_avg_price = (total_old_value + total_new_value) / new_quantity if new_quantity > 0 else 0
+            
+            existing_asset.quantity = new_quantity
+            existing_asset.buy_price = round(new_avg_price, 2)
+        else:
+            # Create new asset
+            buy_price = txn.amount / txn.quantity if txn.quantity else txn.amount
+            new_asset = models.Asset(
+                symbol=txn.asset_symbol.upper(),
+                quantity=txn.quantity,
+                buy_price=round(buy_price, 2),
+                owner_id=user.id
+            )
+            db.add(new_asset)
+
+    # Handle Sell transactions (update portfolio)
+    elif txn.transaction_type == "Sell" and txn.asset_symbol and txn.asset_symbol != "Cash":
+        existing_asset = db.query(models.Asset).filter(
+            models.Asset.owner_id == user.id,
+            models.Asset.symbol == txn.asset_symbol.upper()
+        ).first()
+
+        if existing_asset:
+            existing_asset.quantity -= txn.quantity if txn.quantity else 0
+            if existing_asset.quantity <= 0:
+                db.delete(existing_asset)
+
+    db.commit()
+    db.refresh(db_txn)
+    return db_txn
+
+
+@app.get("/transactions", response_model=List[schemas.TransactionResponse])
+def get_transactions(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """Get transaction history for current user, ordered by date descending"""
+    transactions = db.query(models.Transaction).filter(
+        models.Transaction.owner_id == user.id
+    ).order_by(models.Transaction.date.desc()).all()
+    return transactions
+
+
+# ---------------------------------------------------------
+# PORTFOLIO (Live Calculation)
+# ---------------------------------------------------------
+@app.get("/portfolio", response_model=schemas.PortfolioResponse)
+def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """
+    Get live portfolio with current market prices.
+    Uses yfinance to fetch live prices, falls back to buy_price on error.
+    """
+    assets = db.query(models.Asset).filter(models.Asset.owner_id == user.id).all()
+    
+    positions = []
+    total_cost_basis = 0
+    total_portfolio_value = 0
+
+    for asset in assets:
+        # Fetch live price from yfinance
+        try:
+            ticker = yf.Ticker(asset.symbol)
+            history = ticker.history(period="1d")
+            current_price = float(history['Close'].iloc[-1]) if not history.empty else asset.buy_price
+        except Exception:
+            current_price = asset.buy_price
+
+        cost_basis = asset.quantity * asset.buy_price
+        market_value = asset.quantity * current_price
+        gain_loss = market_value - cost_basis
+
+        positions.append({
+            "symbol": asset.symbol,
+            "units": asset.quantity,
+            "avg_buy_price": round(asset.buy_price, 2),
+            "current_price": round(current_price, 2),
+            "market_value": round(market_value, 2),
+            "gain_loss": round(gain_loss, 2)
+        })
+
+        total_cost_basis += cost_basis
+        total_portfolio_value += market_value
+
+    return {
+        "positions": positions,
+        "overview": {
+            "total_cost_basis": round(total_cost_basis, 2),
+            "total_portfolio_value": round(total_portfolio_value, 2),
+            "overall_gain_loss": round(total_portfolio_value - total_cost_basis, 2)
+        }
+    }
+
+
+# Legacy endpoint for backward compatibility with frontend
+@app.post("/assets")
+def buy_asset(asset: AssetCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """Legacy endpoint - creates asset and transaction record"""
+    # Check if user already owns this asset
+    existing_asset = db.query(models.Asset).filter(
+        models.Asset.owner_id == user.id,
+        models.Asset.symbol == asset.symbol.upper()
+    ).first()
+
+    if existing_asset:
+        # Recalculate average cost basis
+        total_old_value = existing_asset.quantity * existing_asset.buy_price
+        total_new_value = asset.quantity * asset.buy_price
+        new_quantity = existing_asset.quantity + asset.quantity
+        new_avg_price = (total_old_value + total_new_value) / new_quantity
+        
+        existing_asset.quantity = new_quantity
+        existing_asset.buy_price = round(new_avg_price, 2)
+        db_asset = existing_asset
+    else:
+        db_asset = models.Asset(
+            symbol=asset.symbol.upper(),
+            quantity=asset.quantity,
+            buy_price=asset.buy_price,
+            owner_id=user.id
+        )
+        db.add(db_asset)
+
+    # Create transaction record
+    total_cost = asset.quantity * asset.buy_price
+    db_txn = models.Transaction(
+        transaction_type="Buy",
+        asset_symbol=asset.symbol.upper(),
+        quantity=asset.quantity,
+        amount=total_cost,
+        owner_id=user.id
+    )
+    db.add(db_txn)
+    
     db.commit()
     db.refresh(db_asset)
     return db_asset
 
-@app.get("/portfolio/")
-def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    assets = db.query(models.Asset).filter(models.Asset.owner_id == user.id).all()
-    portfolio_data = []
-    total_invested = 0
-    current_value = 0
-    for asset in assets:
-        try:
-            stock = yf.Ticker(asset.symbol)
-            history = stock.history(period="1d")
-            live_price = history['Close'].iloc[-1] if not history.empty else asset.buy_price
-        except:
-            live_price = asset.buy_price
-        val = live_price * asset.quantity
-        profit = val - (asset.buy_price * asset.quantity)
-        portfolio_data.append({
-            "symbol": asset.symbol, "quantity": asset.quantity, "buy_price": asset.buy_price,
-            "live_price": round(live_price, 2), "total_value": round(val, 2), "gain_loss": round(profit, 2)
-        })
-        total_invested += (asset.buy_price * asset.quantity)
-        current_value += val
-    return {
-        "holdings": portfolio_data,
-        "summary": {
-            "invested": round(total_invested, 2),
-            "current_value": round(current_value, 2),
-            "total_profit": round(current_value - total_invested, 2)
-        }
-    }
-
 # --- GOALS & SIMULATION ---
-@app.get("/goals/progress/")
+@app.get("/goals/progress")
 def get_goals_progress(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     goals = db.query(models.Goal).filter(models.Goal.owner_id == user.id).all()
     transactions = db.query(models.Transaction).filter(models.Transaction.owner_id == user.id).all()
-    current_balance = sum(t.amount for t in transactions)
+    
+    # Calculate current balance from transactions
+    balance = 0
+    for t in transactions:
+        if t.transaction_type in ["Contribution", "Sell"]:
+            balance += abs(t.amount) if t.amount else 0
+        elif t.transaction_type in ["Withdrawal", "Buy"]:
+            balance -= abs(t.amount) if t.amount else 0
+    
     results = []
     for goal in goals:
-        progress = (current_balance / goal.target_amount) * 100 if goal.target_amount > 0 else 0
+        progress = (balance / goal.target_amount) * 100 if goal.target_amount > 0 else 0
         results.append({
             "id": goal.id, "owner_id": user.id, "target_name": goal.target_name,
-            "target_amount": goal.target_amount, "current_balance": current_balance,
+            "target_amount": goal.target_amount, "current_balance": balance,
             "percent_complete": min(round(progress, 2), 100.0)
         })
     return results
+
+@app.post("/goals")
+def create_goal(goal: GoalCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    db_goal = models.Goal(target_name=goal.target_name, target_amount=goal.target_amount, owner_id=user.id)
+    db.add(db_goal)
+    db.commit()
+    db.refresh(db_goal)
+    return db_goal
+
+@app.delete("/goals/{goal_id}")
+def delete_goal(goal_id: int, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.owner_id == user.id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    db.delete(goal)
+    db.commit()
+    return {"message": "Goal deleted"}
+
+@app.get("/summary")
+def get_summary(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """Get financial summary based on transactions"""
+    transactions = db.query(models.Transaction).filter(models.Transaction.owner_id == user.id).all()
+    
+    # Calculate income (contributions and sells) and expenses (withdrawals and buys)
+    income = 0
+    expense = 0
+    
+    for t in transactions:
+        if t.transaction_type in ["Contribution", "Sell"]:
+            income += abs(t.amount) if t.amount else 0
+        elif t.transaction_type in ["Withdrawal", "Buy"]:
+            expense += abs(t.amount) if t.amount else 0
+    
+    balance = income - expense
+    return {"balance": round(balance, 2), "income": round(income, 2), "expense": round(expense, 2)}
 
 @app.get("/recommendations/")
 def get_recommendations(risk: str):
