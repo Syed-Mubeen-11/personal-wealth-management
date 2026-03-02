@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>User Registration</title>
-
+    <title>User Login</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -50,38 +49,39 @@
             background-color: #45a049;
         }
 
-        .view-btn {
+        a {
             display: block;
             margin-top: 15px;
-            padding: 8px;
-            background-color: #333;
-            color: white;
+            color: #333;
             text-decoration: none;
-            border-radius: 5px;
         }
 
-        .view-btn:hover {
-            background-color: #555;
+        a:hover {
+            text-decoration: underline;
         }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+
     </style>
 </head>
-
 <body>
-
     <div class="container">
-        <h2>User Registration</h2>
+        <h2>User Login</h2>
 
-        <form action="/register" method="POST">
-            <input type="text" name="name" placeholder="Enter Name" required>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <form action="/login" method="POST">
             <input type="email" name="email" placeholder="Enter Email" required>
             <input type="password" name="password" placeholder="Enter Password" required>
-            <button type="submit">Register</button>
+            <button type="submit">Login</button>
         </form>
 
-
-        <a class="view-btn" href="/users">View Registered Users</a>
+        <a href="/">Back to Home / Register</a>
     </div>
-    <a class="view-btn" href="/login">Already have an account? Login</a>
-
 </body>
 </html>
