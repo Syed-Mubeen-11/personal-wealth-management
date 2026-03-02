@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, Enum
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
 import enum
@@ -23,7 +24,29 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
 
+    goals = relationship(
+        "Goal",
+        back_populates="user",
+        cascade="all, delete"
+    )
+
+    investments = relationship(
+        "Investment",
+        back_populates="user",
+        cascade="all, delete"
+    )
+
+    transactions = relationship(
+        "Transaction",
+        back_populates="user",
+        cascade="all, delete"
+    )
+
     risk_profile = Column(Enum(RiskProfileEnum), nullable=False)
     kyc_status = Column(Enum(KYCStatusEnum), default=KYCStatusEnum.unverified)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+goals = relationship("Goal", back_populates="user", cascade="all, delete")
+investments = relationship("Investment", back_populates="user", cascade="all, delete")
+transactions = relationship("Transaction", back_populates="user", cascade="all, delete")

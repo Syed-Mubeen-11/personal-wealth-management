@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 from enum import Enum
 
 
@@ -13,3 +14,13 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     risk_profile: RiskProfileEnum
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    risk_profile: Optional[str] = None
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str

@@ -9,6 +9,7 @@ from app.core.auth import create_access_token
 from app.core.auth import get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends
+from app.schemas.user import UserUpdate, ChangePassword
 
 router = APIRouter()
 
@@ -82,14 +83,40 @@ def get_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "risk_profile": current_user.risk_profile
     }
-@router.put("/update-risk")
-def update_risk(
-    risk_profile: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+@router.put("/update-profile")
+def update_profile(
+    user_data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    current_user.risk_profile = risk_profile
-    db.commit()
-    db.refresh(current_user)
+    user = db.query(User).filter(User.id == current_user.id).first()
 
-    return {"message": "Risk profile updated successfully"}
+    if user_data.name:
+        user.name = user_data.name
+
+    if user_data.email:
+        user.email = user_data.email
+
+    if user_data.risk_profile:
+        user.risk_profile = user_data.risk_profile
+
+    db.commit()
+
+    return {"message": "Profile updated successfully"}
+
+@router.put("/change-password")
+def change_password(
+    password_data: ChangePassword,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user = db.query(User).filter(User.id == current_user.id).first()
+
+    if not verify_password(password_data.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password incorrect")
+
+    user.password_hash = hash_password(password_data.new_password)
+
+    db.commit()
+
+    return {"message": "Password updated successfully"}
