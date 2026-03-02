@@ -1,10 +1,11 @@
-import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import ProfileRisk from "./pages/ProfileRisk";
-import Portfolio from "./pages/Portfolio";
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
+import ProfileRisk from "./pages/ProfileRisk.jsx";
+import Portfolio from "./pages/Portfolio.jsx";
+import Transactions from "./pages/Transactions.jsx";
+import RiskProfile from "./pages/RiskProfile.jsx";
 
 function App() {
   return (
@@ -16,6 +17,8 @@ function App() {
           <Route index element={<ProfileRisk />} />
           <Route path="profile" element={<ProfileRisk />} />
           <Route path="portfolio" element={<Portfolio />} />
+          <Route path="transactions" element={<Transactions />} />
+          <Route path="riskprofile" element={<RiskProfile />} />
         </Route>
       </Routes>
     </Router>
