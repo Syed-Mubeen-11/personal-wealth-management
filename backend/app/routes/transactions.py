@@ -18,14 +18,14 @@ def get_db():
         db.close()
 
 
-# ✅ Create Transaction
+#  Create Transaction
 @router.post("/", response_model=TransactionResponse)
 def create_transaction(
     transaction: TransactionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 🔹 1. Check if investment exists and belongs to user
+    #  1. Check if investment exists and belongs to user
     investment = db.query(Investment).filter(
         Investment.id == transaction.investment_id,
         Investment.user_id == current_user.id
@@ -37,7 +37,7 @@ def create_transaction(
             detail="Investment not found or does not belong to user"
         )
 
-    # 🔹 2. Create transaction
+    #  2. Create transaction
     new_transaction = Transaction(
         user_id=current_user.id,
         investment_id=transaction.investment_id,
@@ -53,7 +53,7 @@ def create_transaction(
     db.refresh(new_transaction)
 
     return new_transaction
-# ✅ Get User Transactions
+#  Get User Transactions
 @router.get("/", response_model=list[TransactionResponse])
 def get_transactions(
     db: Session = Depends(get_db),
@@ -64,7 +64,7 @@ def get_transactions(
     ).all()
 
 
-# ✅ Delete Transaction
+#  Delete Transaction
 @router.delete("/{transaction_id}")
 def delete_transaction(
     transaction_id: int,

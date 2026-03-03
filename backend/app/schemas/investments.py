@@ -11,7 +11,7 @@ class AssetTypeEnum(str, Enum):
     cash = "cash"
 
 
-# 🔹 Create Investment
+#  Create Investment
 class InvestmentCreate(BaseModel):
     asset_type: AssetTypeEnum
     symbol: str
@@ -19,14 +19,14 @@ class InvestmentCreate(BaseModel):
     avg_buy_price: float
 
 
-# 🔹 Update Investment (optional but recommended)
+#  Update Investment 
 class InvestmentUpdate(BaseModel):
     units: float | None = None
     avg_buy_price: float | None = None
     current_value: float | None = None
 
 
-# 🔹 Response Schema
+#  Response Schema
 class InvestmentResponse(BaseModel):
     id: int
     asset_type: AssetTypeEnum

@@ -11,7 +11,7 @@ class TransactionTypeEnum(str, Enum):
     withdrawal = "withdrawal"
 
 
-# 🔹 Create Transaction
+#  Create Transaction
 class TransactionCreate(BaseModel):
     investment_id: int
     symbol: str
@@ -21,7 +21,7 @@ class TransactionCreate(BaseModel):
     fees: float = 0
 
 
-# 🔹 Response Schema
+#  Response Schema
 class TransactionResponse(BaseModel):
     id: int
     investment_id: int

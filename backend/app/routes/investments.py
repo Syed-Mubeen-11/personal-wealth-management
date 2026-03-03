@@ -17,7 +17,7 @@ def get_db():
         db.close()
 
 
-# ✅ Create Investment
+#  Create Investment
 @router.post("/", response_model=InvestmentResponse)
 def create_investment(
     investment: InvestmentCreate,
@@ -41,7 +41,7 @@ def create_investment(
     return new_investment
 
 
-# ✅ Get User Investments
+#  Get User Investments
 @router.get("/", response_model=list[InvestmentResponse])
 def get_investments(
     db: Session = Depends(get_db),
@@ -52,7 +52,7 @@ def get_investments(
     ).all()
 
 
-# ✅ Delete Investment
+#  Delete Investment
 @router.delete("/{investment_id}")
 def delete_investment(
     investment_id: int,

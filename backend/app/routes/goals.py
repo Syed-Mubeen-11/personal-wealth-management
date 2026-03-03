@@ -18,7 +18,7 @@ def get_db():
         db.close()
 
 
-# ✅ Create Goal
+#  Create Goal
 @router.post("/", response_model=GoalResponse)
 def create_goal(
     goal: GoalCreate,
@@ -40,7 +40,7 @@ def create_goal(
     return new_goal
 
 
-# ✅ Get All Goals (User Specific)
+#  Get All Goals (User Specific)
 @router.get("/", response_model=list[GoalResponse])
 def get_goals(
     db: Session = Depends(get_db),
@@ -49,7 +49,7 @@ def get_goals(
     return db.query(Goal).filter(Goal.user_id == current_user.id).all()
 
 
-# ✅ Delete Goal
+#  Delete Goal
 @router.delete("/{goal_id}")
 def delete_goal(
     goal_id: int,
