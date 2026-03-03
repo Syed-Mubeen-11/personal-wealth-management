@@ -95,18 +95,6 @@ class UserProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class GoalCreate(BaseModel):
-    target_name: str
-    target_amount: float
-
-class GoalResponse(GoalCreate):
-    id: int
-    owner_id: int
-    percent_complete: float = 0
-    current_balance: float = 0
-    class Config:
-        from_attributes = True
-
 class AssetCreate(BaseModel):
     symbol: str
     quantity: float
@@ -684,39 +672,153 @@ def get_simulation_result(task_id: str):
 # ---------------------------------------------------------
 
 @app.post("/goals")
-def create_goal(goal: GoalCreate, db: Session = Depends(get_db)):
+def create_goal(goal: schemas.GoalCreate, db: Session = Depends(get_db)):
+    from datetime import datetime
+    target_date_parsed = None
+    if goal.target_date:
+        try:
+            target_date_parsed = datetime.strptime(goal.target_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    
     db_goal = models.Goal(
-        target_name=goal.target_name, 
-        target_amount=goal.target_amount, 
-        owner_id=1  # Hardcoded for testing
+        user_id=1,  # Hardcoded for testing - replace with current_user.id
+        goal_name=goal.goal_name,
+        goal_type=goal.goal_type,
+        target_amount=goal.target_amount,
+        target_date=target_date_parsed,
+        monthly_contribution=goal.monthly_contribution,
+        status=goal.status
     )
     db.add(db_goal)
     db.commit()
     db.refresh(db_goal)
-    return db_goal
+    
+    return {
+        "id": db_goal.id,
+        "user_id": db_goal.user_id,
+        "goal_name": db_goal.goal_name,
+        "goal_type": db_goal.goal_type.value if hasattr(db_goal.goal_type, 'value') else db_goal.goal_type,
+        "target_amount": db_goal.target_amount,
+        "target_date": db_goal.target_date.isoformat() if db_goal.target_date else None,
+        "monthly_contribution": db_goal.monthly_contribution,
+        "status": db_goal.status.value if hasattr(db_goal.status, 'value') else db_goal.status,
+        "created_at": db_goal.created_at.isoformat() if db_goal.created_at else None
+    }
 
-@app.get("/goals/", response_model=List[GoalResponse])
-def get_user_goals(db: Session = Depends(get_db)):
-    goals = db.query(models.Goal).all()
-    return goals
 
-@app.get("/goals/{goal_id}", response_model=GoalResponse)
+@app.get("/goals")
+def get_goals(
+    page: int = Query(1, ge=1),
+    limit: int = Query(5, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    type: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Get paginated goals with optional search and filters"""
+    query = db.query(models.Goal)
+    
+    # Apply search filter on goal_name
+    if search:
+        query = query.filter(models.Goal.goal_name.ilike(f"%{search}%"))
+    
+    # Apply status filter
+    if status:
+        query = query.filter(models.Goal.status == status)
+    
+    # Apply type filter
+    if type:
+        query = query.filter(models.Goal.goal_type == type)
+    
+    # Get total count for pagination
+    total_count = query.count()
+    total_pages = max(1, (total_count + limit - 1) // limit)
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    goals = query.offset(offset).limit(limit).all()
+    
+    # Format response
+    goals_data = []
+    for goal in goals:
+        goals_data.append({
+            "id": goal.id,
+            "user_id": goal.user_id,
+            "goal_name": goal.goal_name,
+            "goal_type": goal.goal_type.value if hasattr(goal.goal_type, 'value') else goal.goal_type,
+            "target_amount": goal.target_amount,
+            "target_date": goal.target_date.isoformat() if goal.target_date else None,
+            "monthly_contribution": goal.monthly_contribution,
+            "status": goal.status.value if hasattr(goal.status, 'value') else goal.status,
+            "created_at": goal.created_at.isoformat() if goal.created_at else None
+        })
+    
+    return {
+        "data": goals_data,
+        "total_pages": total_pages,
+        "current_page": page
+    }
+
+
+@app.get("/goals/{goal_id}")
 def get_single_goal(goal_id: int, db: Session = Depends(get_db)):
     goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
-    return goal
+    
+    return {
+        "id": goal.id,
+        "user_id": goal.user_id,
+        "goal_name": goal.goal_name,
+        "goal_type": goal.goal_type.value if hasattr(goal.goal_type, 'value') else goal.goal_type,
+        "target_amount": goal.target_amount,
+        "target_date": goal.target_date.isoformat() if goal.target_date else None,
+        "monthly_contribution": goal.monthly_contribution,
+        "status": goal.status.value if hasattr(goal.status, 'value') else goal.status,
+        "created_at": goal.created_at.isoformat() if goal.created_at else None
+    }
 
-@app.put("/goals/{goal_id}", response_model=GoalResponse)
-def update_goal(goal_id: int, goal_update: GoalCreate, db: Session = Depends(get_db)):
+
+@app.put("/goals/{goal_id}")
+def update_goal(goal_id: int, goal_update: schemas.GoalUpdate, db: Session = Depends(get_db)):
+    from datetime import datetime
     goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
-    goal.target_name = goal_update.target_name
-    goal.target_amount = goal_update.target_amount
+    
+    # Update only provided fields
+    if goal_update.goal_name is not None:
+        goal.goal_name = goal_update.goal_name
+    if goal_update.goal_type is not None:
+        goal.goal_type = goal_update.goal_type
+    if goal_update.target_amount is not None:
+        goal.target_amount = goal_update.target_amount
+    if goal_update.target_date is not None:
+        try:
+            goal.target_date = datetime.strptime(goal_update.target_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if goal_update.monthly_contribution is not None:
+        goal.monthly_contribution = goal_update.monthly_contribution
+    if goal_update.status is not None:
+        goal.status = goal_update.status
+    
     db.commit()
     db.refresh(goal)
-    return goal
+    
+    return {
+        "id": goal.id,
+        "user_id": goal.user_id,
+        "goal_name": goal.goal_name,
+        "goal_type": goal.goal_type.value if hasattr(goal.goal_type, 'value') else goal.goal_type,
+        "target_amount": goal.target_amount,
+        "target_date": goal.target_date.isoformat() if goal.target_date else None,
+        "monthly_contribution": goal.monthly_contribution,
+        "status": goal.status.value if hasattr(goal.status, 'value') else goal.status,
+        "created_at": goal.created_at.isoformat() if goal.created_at else None
+    }
+
 
 @app.delete("/goals/{goal_id}")
 def delete_goal(goal_id: int, db: Session = Depends(get_db)):
