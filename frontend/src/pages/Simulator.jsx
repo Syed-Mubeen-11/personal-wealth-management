@@ -40,9 +40,9 @@ function Simulator() {
     };
 
     // --- SAFELY PREPARE CHART DATA ---
-    // The checks (result && result.year_breakdown) prevent the crash
-    const yearsLabel = result && result.year_breakdown ? result.year_breakdown.map(r => `Year ${r.year}`) : [];
-    const valuesData = result && result.year_breakdown ? result.year_breakdown.map(r => r.value) : [];
+    // The checks (result && result.year_by_year) prevent the crash
+    const yearsLabel = result && result.year_by_year ? result.year_by_year.map(r => `Year ${r.year}`) : [];
+    const valuesData = result && result.year_by_year ? result.year_by_year.map(r => r.value) : [];
 
     const chartData = {
         labels: yearsLabel,
@@ -94,7 +94,7 @@ function Simulator() {
                             <div className="mb-6 border-b pb-4">
                                 <p className="text-gray-500 text-sm uppercase font-bold">Total Projected Wealth</p>
                                 <p className="text-4xl font-extrabold text-green-600">
-                                    ${result.total_value ? result.total_value.toLocaleString() : "0"}
+                                    ${result.total_wealth ? result.total_wealth.toLocaleString() : "0"}
                                 </p>
                             </div>
                             <div className="h-80">

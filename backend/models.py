@@ -23,6 +23,15 @@ class TransactionTypeEnum(str, PyEnum):
     withdrawal = "Withdrawal"
 
 
+class AssetClassEnum(str, PyEnum):
+    stock = "Stock"
+    bond = "Bond"
+    etf = "ETF"
+    crypto = "Crypto"
+    cash = "Cash"
+    other = "Other"
+
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -45,6 +54,8 @@ class Asset(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String, index=True)  # e.g., "AAPL"
+    company_name = Column(String, nullable=True)  # e.g., "Apple Inc."
+    asset_class = Column(String, default="Stock")  # "Stock", "Bond", "ETF", "Crypto", "Cash"
     quantity = Column(Float)  # Total units owned
     buy_price = Column(Float)  # Average cost basis per unit
     owner_id = Column(Integer, ForeignKey("users.id"))
