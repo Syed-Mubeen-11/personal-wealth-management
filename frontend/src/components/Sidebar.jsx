@@ -1,118 +1,82 @@
-import React from "react";
+import React, { useContext } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import {
-  HomeIcon,
-  WalletIcon,
-  CreditCardIcon,
-  ChartBarIcon,
-  UserIcon,
-  ArrowRightOnRectangleIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { ThemeContext } from "../context/Themecontext";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
-const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
+const Sidebar = ({ setIsAuthenticated, sidebarOpen, setSidebarOpen }) => {
+  const navigate = useNavigate();
+  const { darkMode } = useContext(ThemeContext);
 
-    const navigate = useNavigate();
-
- const handleLogout = () => {
-  localStorage.removeItem("token");   // remove JWT
-  //navigate("/login",{replace: true});     
-  window.location.href="/login"    // redirect
-};
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsAuthenticated(false);
+    navigate("/login");
+  };
 
   const menuItems = [
-    { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },
-    { name: "Portfolio", icon: WalletIcon, path: "/portfolio" },
-    { name: "Transactions", icon: CreditCardIcon, path: "/transactions" },
-    { name: "Goals", icon: ChartBarIcon, path: "/goals" },
-    { name: "Reports", icon: ChartBarIcon, path: "/reports" },
-  ];
-
-  const bottomItems = [
-    { name: "Profile", icon: UserIcon, path: "/profile" },
+    { name: "Dashboard", path: "/dashboard" },
+    { name: "Portfolio", path: "/portfolio" },
+    { name: "Transactions", path: "/transactions" },
+    { name: "Goals", path: "/goals" },
+    { name: "Reports", path: "/reports" },
+    { name: "Profile", path: "/profile" },
   ];
 
   return (
     <>
-      {/* Overlay (Mobile Only) */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-30 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* Overlay for mobile */}
+      <div
+        className={`fixed inset-0 z-30 md:hidden transition-opacity duration-300 ${
+          sidebarOpen ? "opacity-50 visible bg-black" : "opacity-0 invisible"
+        }`}
+        onClick={() => setSidebarOpen(false)}
+      />
 
       <aside
-        className={`fixed md:static z-50 top-0 left-0 h-full w-64 bg-white shadow-lg border-r border-gray-100 transform ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col justify-between`}
+        className={`fixed top-0 left-0 z-40 h-full w-64 transform transition-transform duration-300
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        md:translate-x-0 md:static md:h-screen
+        ${darkMode ? "bg-gray-800" : "bg-white"} shadow-lg flex flex-col justify-between`}
       >
-        {/* Top Section */}
         <div>
-          <div className="flex items-center justify-between p-6">
-            <h2 className="text-lg font-bold text-indigo-600">
-              WealthApp
-            </h2>
-
-            {/* Close Button (Mobile Only) */}
-            <button
-              className="md:hidden"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <XMarkIcon className="h-6 w-6 text-gray-600" />
+          {/* Mobile Close Button */}
+          <div className="flex items-center justify-between p-6 md:hidden">
+            <div className={`text-xl font-bold text-indigo-600`}>WealthApp</div>
+            <button onClick={() => setSidebarOpen(false)}>
+              <XMarkIcon
+                className="h-6 w-6 text-gray-200 dark:text-gray-200"
+              />
             </button>
           </div>
 
-          <nav className="px-4 space-y-2">
+          {/* Logo for desktop */}
+          <div className="hidden md:block p-6 text-xl font-bold text-indigo-600">
+            WealthApp
+          </div>
+
+          <nav className="px-4 space-y-2 mt-4">
             {menuItems.map((item) => (
               <NavLink
-                key={item.name}
+                key={item.path}
                 to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                    isActive
-                      ? "bg-indigo-50 text-indigo-600"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`
-                }
+                className={`block p-3 rounded hover:bg-indigo-100 dark:hover:bg-indigo-700 transition-colors duration-200 ${
+                  darkMode ? "text-gray-200" : "text-gray-800"
+                }`}
+                onClick={() => setSidebarOpen(false)} // close sidebar on mobile click
               >
-                <item.icon className="h-5 w-5" />
-                <span className="font-medium">{item.name}</span>
+                {item.name}
               </NavLink>
             ))}
           </nav>
         </div>
 
-        {/* Bottom Section */}
-        <div className="px-4 pb-6 space-y-2">
-
-          {/* Profile */}
-          {bottomItems.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl transition ${
-                  isActive
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`
-              }
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="font-medium">{item.name}</span>
-            </NavLink>
-          ))}
-
-          {/* Logout Button */}
+        <div className="p-4">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl transition text-gray-600 hover:bg-red-50 hover:text-red-600 w-full"
+            className="w-full bg-red-500 text-white p-3 rounded hover:bg-red-600 transition"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            <span className="font-medium">Logout</span>
+            Logout
           </button>
-
         </div>
       </aside>
     </>

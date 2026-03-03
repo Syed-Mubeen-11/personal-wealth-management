@@ -2,12 +2,7 @@ import React, { useContext, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import profile from "../assets/profile.png";
 import { ThemeContext } from "../context/Themecontext";
-import {
-  SunIcon,
-  MoonIcon,
-  BellIcon,
-  Bars3Icon,
-} from "@heroicons/react/24/outline";
+import { SunIcon, MoonIcon, BellIcon, Bars3Icon } from "@heroicons/react/24/outline";
 
 const Navbar = ({ setSidebarOpen }) => {
   const { darkMode, toggleTheme } = useContext(ThemeContext);
@@ -33,31 +28,40 @@ const Navbar = ({ setSidebarOpen }) => {
   return (
     <nav
       className="flex items-center justify-between 
-      bg-white dark:bg-gray-800 
-      px-4 md:px-6 py-4 
-      shadow-sm border-b 
-      border-gray-100 dark:border-gray-700
-      transition-colors duration-300"
+                 bg-white dark:bg-gray-900 
+                 px-4 md:px-6 py-4 
+                 shadow-md dark:shadow-lg
+                 border-b border-gray-200 dark:border-gray-700
+                 transition-colors duration-300"
     >
       {/* Left Section */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
+        {/* Sidebar toggle for mobile */}
         <button
           onClick={() => setSidebarOpen(true)}
-          className="md:hidden"
+          className="md:hidden p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
         >
           <Bars3Icon className="h-6 w-6 text-gray-700 dark:text-gray-200" />
         </button>
 
-        <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+        {/* Page Title */}
+        <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-gray-100">
           {pageTitle}
         </h1>
       </div>
 
       {/* Right Section */}
       <div className="flex items-center gap-4">
-        <BellIcon className="h-6 w-6 text-gray-500 dark:text-gray-300 cursor-pointer hover:text-indigo-600 transition" />
+        {/* Notifications */}
+        <button className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+          <BellIcon className="h-6 w-6 text-gray-500 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition" />
+        </button>
 
-        <button onClick={toggleTheme}>
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+        >
           {darkMode ? (
             <SunIcon className="h-6 w-6 text-yellow-400" />
           ) : (
@@ -65,10 +69,11 @@ const Navbar = ({ setSidebarOpen }) => {
           )}
         </button>
 
+        {/* Profile Avatar */}
         <img
           src={profile}
           alt="User"
-          className="h-9 w-9 rounded-full border border-gray-200 dark:border-gray-700 cursor-pointer"
+          className="h-10 w-10 rounded-full border border-gray-200 dark:border-gray-700 cursor-pointer shadow-sm dark:shadow-md transition"
         />
       </div>
     </nav>
