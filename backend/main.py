@@ -642,47 +642,6 @@ def buy_asset(asset: AssetCreate, db: Session = Depends(get_db), user: models.Us
     db.refresh(db_asset)
     return db_asset
 
-# --- GOALS & SIMULATION ---
-@app.get("/goals/progress")
-def get_goals_progress(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    goals = db.query(models.Goal).filter(models.Goal.owner_id == user.id).all()
-    transactions = db.query(models.Transaction).filter(models.Transaction.owner_id == user.id).all()
-    
-    # Calculate current balance from transactions
-    balance = 0
-    for t in transactions:
-        if t.transaction_type in ["Contribution", "Sell"]:
-            balance += abs(t.amount) if t.amount else 0
-        elif t.transaction_type in ["Withdrawal", "Buy"]:
-            balance -= abs(t.amount) if t.amount else 0
-    
-    results = []
-    for goal in goals:
-        progress = (balance / goal.target_amount) * 100 if goal.target_amount > 0 else 0
-        results.append({
-            "id": goal.id, "owner_id": user.id, "target_name": goal.target_name,
-            "target_amount": goal.target_amount, "current_balance": balance,
-            "percent_complete": min(round(progress, 2), 100.0)
-        })
-    return results
-
-@app.post("/goals")
-def create_goal(goal: GoalCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    db_goal = models.Goal(target_name=goal.target_name, target_amount=goal.target_amount, owner_id=user.id)
-    db.add(db_goal)
-    db.commit()
-    db.refresh(db_goal)
-    return db_goal
-
-@app.delete("/goals/{goal_id}")
-def delete_goal(goal_id: int, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.owner_id == user.id).first()
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    db.delete(goal)
-    db.commit()
-    return {"message": "Goal deleted"}
-
 @app.get("/summary")
 def get_summary(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     """Get financial summary based on transactions"""
@@ -720,3 +679,51 @@ def get_simulation_result(task_id: str):
     res = AsyncResult(task_id, app=celery_app)
     if res.state == 'SUCCESS': return {"status": "Completed", "result": res.result}
     return {"status": "Processing..."}
+# ---------------------------------------------------------
+# GOALS CRUD
+# ---------------------------------------------------------
+
+@app.post("/goals")
+def create_goal(goal: GoalCreate, db: Session = Depends(get_db)):
+    db_goal = models.Goal(
+        target_name=goal.target_name, 
+        target_amount=goal.target_amount, 
+        owner_id=1  # Hardcoded for testing
+    )
+    db.add(db_goal)
+    db.commit()
+    db.refresh(db_goal)
+    return db_goal
+
+@app.get("/goals/", response_model=List[GoalResponse])
+def get_user_goals(db: Session = Depends(get_db)):
+    goals = db.query(models.Goal).all()
+    return goals
+
+@app.get("/goals/{goal_id}", response_model=GoalResponse)
+def get_single_goal(goal_id: int, db: Session = Depends(get_db)):
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return goal
+
+@app.put("/goals/{goal_id}", response_model=GoalResponse)
+def update_goal(goal_id: int, goal_update: GoalCreate, db: Session = Depends(get_db)):
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    goal.target_name = goal_update.target_name
+    goal.target_amount = goal_update.target_amount
+    db.commit()
+    db.refresh(goal)
+    return goal
+
+@app.delete("/goals/{goal_id}")
+def delete_goal(goal_id: int, db: Session = Depends(get_db)):
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    db.delete(goal)
+    db.commit()
+    return {"message": "Goal deleted"}
+
