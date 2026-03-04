@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from . import models, schemas, crud, database
+from .. import models, schemas, crud, database
 
 models.Base.metadata.create_all(bind=database.engine)
 app = FastAPI(title="Personalized Wealth Management project application")
