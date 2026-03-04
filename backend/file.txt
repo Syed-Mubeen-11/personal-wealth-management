@@ -1,0 +1,16 @@
+About crud.py:
+1. Calculation Logic: units * price
+2. Convert Pydantic schema to dict and create DB model
+(Use .model_dump() for Pydantic v2 or .dict() for Pydantic v1)
+
+About main.py:
+1. DATABASE INITIALIZATION
+This line creates the tables in PostgreSQL if they don't exist yet.
+It uses the engine defined in your database.py.
+2. APP INITIALIZATION
+We define the app only once here with your specific title.
+3. DATABASE DEPENDENCY
+This function handles opening and closing the connection for every API call.
+--- ROOT ROUTE ---
+--- USER CRUD ROUTES ---
+--- INVESTMENT CRUD ROUTES ---

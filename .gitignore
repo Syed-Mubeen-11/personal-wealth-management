@@ -1,6 +1,15 @@
+
 # Ignore environment file
 .env
 _pycache_/
 *.pyc
 *.pyo
 *.pyd
+=======
+node_modules
+dist
+dist-ssr
+*.local
+.vscode
+.DS_Store
+>>>>>>> ef020c4e35faa430fd592983711998d97b5987c6
