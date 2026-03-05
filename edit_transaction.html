@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Transaction</title>
+</head>
+<body>
+    <h2>Edit Transaction</h2>
+
+    <form method="POST" action="/update_transaction/{{ transaction[0] }}">
+
+        Symbol: <input type="text" name="symbol" value="{{ transaction[2] }}"><br><br>
+
+        Type:
+        <select name="type">
+            <option value="buy" {% if transaction[3] == 'buy' %}selected{% endif %}>Buy</option>
+            <option value="sell" {% if transaction[3] == 'sell' %}selected{% endif %}>Sell</option>
+            <option value="dividend" {% if transaction[3] == 'dividend' %}selected{% endif %}>Dividend</option>
+            <option value="contribution" {% if transaction[3] == 'contribution' %}selected{% endif %}>Contribution</option>
+            <option value="withdrawal" {% if transaction[3] == 'withdrawal' %}selected{% endif %}>Withdrawal</option>
+        </select><br><br>
+
+        Quantity: <input type="number" step="any" name="quantity" value="{{ transaction[4] }}"><br><br>
+
+        Price: <input type="number" step="any" name="price" value="{{ transaction[5] }}"><br><br>
+
+        Fees: <input type="number" step="any" name="fees" value="{{ transaction[6] }}"><br><br>
+
+        <button type="submit">Update Transaction</button>
+    </form>
+</body>
+</html>

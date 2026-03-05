@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Transactions</title>
+</head>
+<body>
+    <h2>User Transactions</h2>
+
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>Symbol</th>
+            <th>Type</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Fees</th>
+            <th>Executed At</th>
+            <th>Action</th>
+            <th>User ID</th>
+        </tr>
+
+        {% for t in transactions %}
+        <tr>
+            <td>{{ t[0] }}</td>
+            <td>{{ t[1] }}</td>
+            <td>{{ t[2] }}</td>
+            <td>{{ t[3] }}</td>
+            <td>{{ t[4] }}</td>
+            <td>{{ t[5] }}</td>
+            <td>{{ t[6] }}</td>
+            <td>{{ t[1] }}</td>
+            <td>
+                <a href="/edit_transaction/{{ t[0] }}">Edit</a> |
+                <a href="/delete_transaction/{{ t[0] }}">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
