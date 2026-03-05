@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, TIMESTAMP, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Enum, TIMESTAMP, Float, ForeignKey, DateTime, Date
 from sqlalchemy.orm import relationship
 from database import Base
 from enum import Enum as PyEnum
@@ -23,6 +23,29 @@ class TransactionTypeEnum(str, PyEnum):
     withdrawal = "Withdrawal"
 
 
+class AssetClassEnum(str, PyEnum):
+    stock = "Stock"
+    bond = "Bond"
+    etf = "ETF"
+    crypto = "Crypto"
+    cash = "Cash"
+    other = "Other"
+
+
+class GoalTypeEnum(str, PyEnum):
+    retirement = "retirement"
+    home = "home"
+    education = "education"
+    custom = "custom"
+    travel = "travel"
+
+
+class GoalStatusEnum(str, PyEnum):
+    active = "active"
+    paused = "paused"
+    completed = "completed"
+
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -36,7 +59,7 @@ class User(Base):
     # Relationships
     assets = relationship("Asset", back_populates="owner")
     transactions = relationship("Transaction", back_populates="owner")
-    goals = relationship("Goal", back_populates="owner")
+    goals = relationship("Goal", back_populates="owner", foreign_keys="Goal.user_id")
 
 
 class Asset(Base):
@@ -45,6 +68,8 @@ class Asset(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String, index=True)  # e.g., "AAPL"
+    company_name = Column(String, nullable=True)  # e.g., "Apple Inc."
+    asset_class = Column(String, default="Stock")  # "Stock", "Bond", "ETF", "Crypto", "Cash"
     quantity = Column(Float)  # Total units owned
     buy_price = Column(Float)  # Average cost basis per unit
     owner_id = Column(Integer, ForeignKey("users.id"))
@@ -71,8 +96,13 @@ class Goal(Base):
     __tablename__ = "goals"
 
     id = Column(Integer, primary_key=True, index=True)
-    target_name = Column(String)
-    target_amount = Column(Float)
-    owner_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    goal_name = Column(String, nullable=False)
+    goal_type = Column(Enum(GoalTypeEnum), default=GoalTypeEnum.custom)
+    target_amount = Column(Float, nullable=False)
+    target_date = Column(Date, nullable=True)
+    monthly_contribution = Column(Float, default=0.0)
+    status = Column(Enum(GoalStatusEnum), default=GoalStatusEnum.active)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="goals")

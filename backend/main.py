@@ -49,7 +49,9 @@ app.add_middleware(
         "http://localhost:5173", 
         "http://localhost:3000", 
         "http://localhost:5174",
-        
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
     ],  
     allow_credentials=True,
     allow_methods=["*"],  
@@ -90,18 +92,6 @@ class UserProfileResponse(BaseModel):
     date_of_birth: Optional[date] = None
     risk_profile: str = "moderate"
     kyc_status: str = "unverified"
-    class Config:
-        from_attributes = True
-
-class GoalCreate(BaseModel):
-    target_name: str
-    target_amount: float
-
-class GoalResponse(GoalCreate):
-    id: int
-    owner_id: int
-    percent_complete: float = 0
-    current_balance: float = 0
     class Config:
         from_attributes = True
 
@@ -284,9 +274,240 @@ def get_transactions(db: Session = Depends(get_db), user: models.User = Depends(
     return transactions
 
 
+@app.get("/transactions/paginated", response_model=schemas.PaginatedTransactionsResponse)
+def get_paginated_transactions(
+    page: int = Query(1, ge=1),
+    limit: int = Query(5, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    transaction_type: Optional[str] = Query(None),
+    sort_by: str = Query("date"),
+    sort_order: str = Query("desc"),
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    """Get paginated, searchable, filterable transaction history"""
+    query = db.query(models.Transaction).filter(models.Transaction.owner_id == user.id)
+    
+    # Apply search filter
+    if search:
+        query = query.filter(models.Transaction.asset_symbol.ilike(f"%{search}%"))
+    
+    # Apply type filter
+    if transaction_type:
+        query = query.filter(models.Transaction.transaction_type == transaction_type)
+    
+    # Get total count before pagination
+    total = query.count()
+    
+    # Apply sorting
+    if sort_by == "date":
+        query = query.order_by(models.Transaction.date.desc() if sort_order == "desc" else models.Transaction.date.asc())
+    elif sort_by == "amount":
+        query = query.order_by(models.Transaction.amount.desc() if sort_order == "desc" else models.Transaction.amount.asc())
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    transactions = query.offset(offset).limit(limit).all()
+    
+    total_pages = (total + limit - 1) // limit  # Ceiling division
+    
+    return {
+        "total_transactions": total,
+        "current_page": page,
+        "total_pages": total_pages,
+        "per_page": limit,
+        "data": transactions
+    }
+
+
 # ---------------------------------------------------------
 # PORTFOLIO (Live Calculation)
 # ---------------------------------------------------------
+
+# Company name lookup dictionary
+COMPANY_NAMES = {
+    "AAPL": "Apple Inc.",
+    "MSFT": "Microsoft Corp.",
+    "GOOGL": "Alphabet Inc.",
+    "AMZN": "Amazon.com Inc.",
+    "TSLA": "Tesla Inc.",
+    "META": "Meta Platforms Inc.",
+    "NVDA": "NVIDIA Corp.",
+    "JPM": "JPMorgan Chase & Co.",
+    "V": "Visa Inc.",
+    "JNJ": "Johnson & Johnson",
+    "WMT": "Walmart Inc.",
+    "PG": "Procter & Gamble Co.",
+    "MA": "Mastercard Inc.",
+    "UNH": "UnitedHealth Group Inc.",
+    "HD": "Home Depot Inc.",
+    "DIS": "Walt Disney Co.",
+    "PYPL": "PayPal Holdings Inc.",
+    "NFLX": "Netflix Inc.",
+    "ADBE": "Adobe Inc.",
+    "CRM": "Salesforce Inc.",
+    "BND": "Vanguard Total Bond ETF",
+    "VTI": "Vanguard Total Stock ETF",
+    "QQQ": "Invesco QQQ Trust",
+    "SPY": "SPDR S&P 500 ETF",
+}
+
+# Asset allocation colors (matching target UI)
+ALLOCATION_COLORS = {
+    "Stock": "#0D9488",      # Dark Teal
+    "ETF": "#F97316",        # Coral/Orange
+    "Bond": "#EAB308",       # Gold
+    "Crypto": "#5EEAD4",     # Light Teal
+    "Cash": "#14B8A6",       # Teal
+    "Other": "#6366F1",      # Indigo
+}
+
+
+def get_company_name(symbol: str) -> str:
+    """Get company name from lookup or fetch from yfinance"""
+    symbol = symbol.upper()
+    if symbol in COMPANY_NAMES:
+        return COMPANY_NAMES[symbol]
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        return info.get('longName', info.get('shortName', symbol))
+    except:
+        return symbol
+
+
+@app.get("/portfolio/overview", response_model=schemas.PortfolioOverviewResponse)
+def get_portfolio_overview(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """
+    Get aggregated portfolio overview with metrics and asset allocation chart data.
+    Returns pre-calculated values for the dashboard cards and donut chart.
+    """
+    assets = db.query(models.Asset).filter(models.Asset.owner_id == user.id).all()
+    
+    total_cost_basis = 0
+    total_portfolio_value = 0
+    performance_today = 0
+    
+    # Asset allocation aggregation
+    allocation_by_class = {}
+    
+    for asset in assets:
+        # Fetch live price and previous close from yfinance
+        try:
+            ticker = yf.Ticker(asset.symbol)
+            history = ticker.history(period="2d")
+            if len(history) >= 2:
+                current_price = float(history['Close'].iloc[-1])
+                prev_close = float(history['Close'].iloc[-2])
+            elif len(history) == 1:
+                current_price = float(history['Close'].iloc[-1])
+                prev_close = current_price
+            else:
+                current_price = asset.buy_price
+                prev_close = asset.buy_price
+        except Exception:
+            current_price = asset.buy_price
+            prev_close = asset.buy_price
+        
+        cost_basis = asset.quantity * asset.buy_price
+        market_value = asset.quantity * current_price
+        today_change = (current_price - prev_close) * asset.quantity
+        
+        total_cost_basis += cost_basis
+        total_portfolio_value += market_value
+        performance_today += today_change
+        
+        # Aggregate by asset class
+        asset_class = asset.asset_class or "Stock"
+        if asset_class not in allocation_by_class:
+            allocation_by_class[asset_class] = 0
+        allocation_by_class[asset_class] += market_value
+    
+    # Calculate percentages and build chart data
+    labels = []
+    values = []
+    percentages = []
+    colors = []
+    
+    for asset_class, value in allocation_by_class.items():
+        labels.append(asset_class)
+        values.append(round(value, 2))
+        pct = (value / total_portfolio_value * 100) if total_portfolio_value > 0 else 0
+        percentages.append(round(pct, 2))
+        colors.append(ALLOCATION_COLORS.get(asset_class, "#6366F1"))
+    
+    overall_gain_loss = total_portfolio_value - total_cost_basis
+    overall_gain_loss_percent = (overall_gain_loss / total_cost_basis * 100) if total_cost_basis > 0 else 0
+    performance_today_percent = (performance_today / (total_portfolio_value - performance_today) * 100) if (total_portfolio_value - performance_today) > 0 else 0
+    
+    return {
+        "total_portfolio_value": round(total_portfolio_value, 2),
+        "total_cost_basis": round(total_cost_basis, 2),
+        "performance_today": round(performance_today, 2),
+        "performance_today_percent": round(performance_today_percent, 2),
+        "overall_gain_loss": round(overall_gain_loss, 2),
+        "overall_gain_loss_percent": round(overall_gain_loss_percent, 2),
+        "asset_allocation": {
+            "labels": labels,
+            "values": values,
+            "percentages": percentages,
+            "colors": colors
+        }
+    }
+
+
+@app.get("/portfolio/positions", response_model=schemas.PaginatedPositionsResponse)
+def get_portfolio_positions(
+    page: int = Query(1, ge=1),
+    limit: int = Query(5, ge=1, le=100),
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    """Get paginated current positions with live prices"""
+    query = db.query(models.Asset).filter(models.Asset.owner_id == user.id)
+    
+    total = query.count()
+    offset = (page - 1) * limit
+    assets = query.offset(offset).limit(limit).all()
+    
+    positions = []
+    for asset in assets:
+        try:
+            ticker = yf.Ticker(asset.symbol)
+            history = ticker.history(period="1d")
+            current_price = float(history['Close'].iloc[-1]) if not history.empty else asset.buy_price
+        except Exception:
+            current_price = asset.buy_price
+        
+        cost_basis = asset.quantity * asset.buy_price
+        market_value = asset.quantity * current_price
+        gain_loss = market_value - cost_basis
+        gain_loss_percent = (gain_loss / cost_basis * 100) if cost_basis > 0 else 0
+        
+        company_name = asset.company_name or get_company_name(asset.symbol)
+        
+        positions.append({
+            "symbol": asset.symbol,
+            "company_name": company_name,
+            "units": asset.quantity,
+            "avg_buy_price": round(asset.buy_price, 2),
+            "current_price": round(current_price, 2),
+            "market_value": round(market_value, 2),
+            "gain_loss": round(gain_loss, 2),
+            "gain_loss_percent": round(gain_loss_percent, 2)
+        })
+    
+    total_pages = (total + limit - 1) // limit
+    
+    return {
+        "total_positions": total,
+        "current_page": page,
+        "total_pages": total_pages,
+        "per_page": limit,
+        "data": positions
+    }
+
+
 @app.get("/portfolio", response_model=schemas.PortfolioResponse)
 def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     """
@@ -298,38 +519,62 @@ def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get
     positions = []
     total_cost_basis = 0
     total_portfolio_value = 0
+    performance_today = 0
 
     for asset in assets:
         # Fetch live price from yfinance
         try:
             ticker = yf.Ticker(asset.symbol)
-            history = ticker.history(period="1d")
-            current_price = float(history['Close'].iloc[-1]) if not history.empty else asset.buy_price
+            history = ticker.history(period="2d")
+            if len(history) >= 2:
+                current_price = float(history['Close'].iloc[-1])
+                prev_close = float(history['Close'].iloc[-2])
+            elif len(history) == 1:
+                current_price = float(history['Close'].iloc[-1])
+                prev_close = current_price
+            else:
+                current_price = asset.buy_price
+                prev_close = asset.buy_price
         except Exception:
             current_price = asset.buy_price
+            prev_close = asset.buy_price
 
         cost_basis = asset.quantity * asset.buy_price
         market_value = asset.quantity * current_price
         gain_loss = market_value - cost_basis
+        gain_loss_percent = (gain_loss / cost_basis * 100) if cost_basis > 0 else 0
+        today_change = (current_price - prev_close) * asset.quantity
+        
+        company_name = asset.company_name or get_company_name(asset.symbol)
 
         positions.append({
             "symbol": asset.symbol,
+            "company_name": company_name,
             "units": asset.quantity,
             "avg_buy_price": round(asset.buy_price, 2),
             "current_price": round(current_price, 2),
             "market_value": round(market_value, 2),
-            "gain_loss": round(gain_loss, 2)
+            "gain_loss": round(gain_loss, 2),
+            "gain_loss_percent": round(gain_loss_percent, 2)
         })
 
         total_cost_basis += cost_basis
         total_portfolio_value += market_value
+        performance_today += today_change
+
+    overall_gain_loss = total_portfolio_value - total_cost_basis
+    overall_gain_loss_percent = (overall_gain_loss / total_cost_basis * 100) if total_cost_basis > 0 else 0
+    performance_today_percent = (performance_today / (total_portfolio_value - performance_today) * 100) if (total_portfolio_value - performance_today) > 0 else 0
 
     return {
         "positions": positions,
         "overview": {
             "total_cost_basis": round(total_cost_basis, 2),
             "total_portfolio_value": round(total_portfolio_value, 2),
-            "overall_gain_loss": round(total_portfolio_value - total_cost_basis, 2)
+            "overall_gain_loss": round(overall_gain_loss, 2),
+            "overall_gain_loss_percent": round(overall_gain_loss_percent, 2),
+            "performance_today": round(performance_today, 2),
+            "performance_today_percent": round(performance_today_percent, 2)
         }
     }
 
@@ -338,6 +583,9 @@ def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get
 @app.post("/assets")
 def buy_asset(asset: AssetCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     """Legacy endpoint - creates asset and transaction record"""
+    # Get company name
+    company_name = get_company_name(asset.symbol)
+    
     # Check if user already owns this asset
     existing_asset = db.query(models.Asset).filter(
         models.Asset.owner_id == user.id,
@@ -353,10 +601,14 @@ def buy_asset(asset: AssetCreate, db: Session = Depends(get_db), user: models.Us
         
         existing_asset.quantity = new_quantity
         existing_asset.buy_price = round(new_avg_price, 2)
+        if not existing_asset.company_name:
+            existing_asset.company_name = company_name
         db_asset = existing_asset
     else:
         db_asset = models.Asset(
             symbol=asset.symbol.upper(),
+            company_name=company_name,
+            asset_class="Stock",
             quantity=asset.quantity,
             buy_price=asset.buy_price,
             owner_id=user.id
@@ -420,39 +672,153 @@ def get_simulation_result(task_id: str):
 # ---------------------------------------------------------
 
 @app.post("/goals")
-def create_goal(goal: GoalCreate, db: Session = Depends(get_db)):
+def create_goal(goal: schemas.GoalCreate, db: Session = Depends(get_db)):
+    from datetime import datetime
+    target_date_parsed = None
+    if goal.target_date:
+        try:
+            target_date_parsed = datetime.strptime(goal.target_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    
     db_goal = models.Goal(
-        target_name=goal.target_name, 
-        target_amount=goal.target_amount, 
-        owner_id=1  # Hardcoded for testing
+        user_id=1,  # Hardcoded for testing - replace with current_user.id
+        goal_name=goal.goal_name,
+        goal_type=goal.goal_type,
+        target_amount=goal.target_amount,
+        target_date=target_date_parsed,
+        monthly_contribution=goal.monthly_contribution,
+        status=goal.status
     )
     db.add(db_goal)
     db.commit()
     db.refresh(db_goal)
-    return db_goal
+    
+    return {
+        "id": db_goal.id,
+        "user_id": db_goal.user_id,
+        "goal_name": db_goal.goal_name,
+        "goal_type": db_goal.goal_type.value if hasattr(db_goal.goal_type, 'value') else db_goal.goal_type,
+        "target_amount": db_goal.target_amount,
+        "target_date": db_goal.target_date.isoformat() if db_goal.target_date else None,
+        "monthly_contribution": db_goal.monthly_contribution,
+        "status": db_goal.status.value if hasattr(db_goal.status, 'value') else db_goal.status,
+        "created_at": db_goal.created_at.isoformat() if db_goal.created_at else None
+    }
 
-@app.get("/goals/", response_model=List[GoalResponse])
-def get_user_goals(db: Session = Depends(get_db)):
-    goals = db.query(models.Goal).all()
-    return goals
 
-@app.get("/goals/{goal_id}", response_model=GoalResponse)
+@app.get("/goals")
+def get_goals(
+    page: int = Query(1, ge=1),
+    limit: int = Query(5, ge=1, le=100),
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    type: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Get paginated goals with optional search and filters"""
+    query = db.query(models.Goal)
+    
+    # Apply search filter on goal_name
+    if search:
+        query = query.filter(models.Goal.goal_name.ilike(f"%{search}%"))
+    
+    # Apply status filter
+    if status:
+        query = query.filter(models.Goal.status == status)
+    
+    # Apply type filter
+    if type:
+        query = query.filter(models.Goal.goal_type == type)
+    
+    # Get total count for pagination
+    total_count = query.count()
+    total_pages = max(1, (total_count + limit - 1) // limit)
+    
+    # Apply pagination
+    offset = (page - 1) * limit
+    goals = query.offset(offset).limit(limit).all()
+    
+    # Format response
+    goals_data = []
+    for goal in goals:
+        goals_data.append({
+            "id": goal.id,
+            "user_id": goal.user_id,
+            "goal_name": goal.goal_name,
+            "goal_type": goal.goal_type.value if hasattr(goal.goal_type, 'value') else goal.goal_type,
+            "target_amount": goal.target_amount,
+            "target_date": goal.target_date.isoformat() if goal.target_date else None,
+            "monthly_contribution": goal.monthly_contribution,
+            "status": goal.status.value if hasattr(goal.status, 'value') else goal.status,
+            "created_at": goal.created_at.isoformat() if goal.created_at else None
+        })
+    
+    return {
+        "data": goals_data,
+        "total_pages": total_pages,
+        "current_page": page
+    }
+
+
+@app.get("/goals/{goal_id}")
 def get_single_goal(goal_id: int, db: Session = Depends(get_db)):
     goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
-    return goal
+    
+    return {
+        "id": goal.id,
+        "user_id": goal.user_id,
+        "goal_name": goal.goal_name,
+        "goal_type": goal.goal_type.value if hasattr(goal.goal_type, 'value') else goal.goal_type,
+        "target_amount": goal.target_amount,
+        "target_date": goal.target_date.isoformat() if goal.target_date else None,
+        "monthly_contribution": goal.monthly_contribution,
+        "status": goal.status.value if hasattr(goal.status, 'value') else goal.status,
+        "created_at": goal.created_at.isoformat() if goal.created_at else None
+    }
 
-@app.put("/goals/{goal_id}", response_model=GoalResponse)
-def update_goal(goal_id: int, goal_update: GoalCreate, db: Session = Depends(get_db)):
+
+@app.put("/goals/{goal_id}")
+def update_goal(goal_id: int, goal_update: schemas.GoalUpdate, db: Session = Depends(get_db)):
+    from datetime import datetime
     goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
-    goal.target_name = goal_update.target_name
-    goal.target_amount = goal_update.target_amount
+    
+    # Update only provided fields
+    if goal_update.goal_name is not None:
+        goal.goal_name = goal_update.goal_name
+    if goal_update.goal_type is not None:
+        goal.goal_type = goal_update.goal_type
+    if goal_update.target_amount is not None:
+        goal.target_amount = goal_update.target_amount
+    if goal_update.target_date is not None:
+        try:
+            goal.target_date = datetime.strptime(goal_update.target_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if goal_update.monthly_contribution is not None:
+        goal.monthly_contribution = goal_update.monthly_contribution
+    if goal_update.status is not None:
+        goal.status = goal_update.status
+    
     db.commit()
     db.refresh(goal)
-    return goal
+    
+    return {
+        "id": goal.id,
+        "user_id": goal.user_id,
+        "goal_name": goal.goal_name,
+        "goal_type": goal.goal_type.value if hasattr(goal.goal_type, 'value') else goal.goal_type,
+        "target_amount": goal.target_amount,
+        "target_date": goal.target_date.isoformat() if goal.target_date else None,
+        "monthly_contribution": goal.monthly_contribution,
+        "status": goal.status.value if hasattr(goal.status, 'value') else goal.status,
+        "created_at": goal.created_at.isoformat() if goal.created_at else None
+    }
+
 
 @app.delete("/goals/{goal_id}")
 def delete_goal(goal_id: int, db: Session = Depends(get_db)):

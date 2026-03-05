@@ -50,6 +50,15 @@ class TransactionResponse(BaseModel):
         from_attributes = True
 
 
+class PaginatedTransactionsResponse(BaseModel):
+    """Paginated transactions response"""
+    total_transactions: int
+    current_page: int
+    total_pages: int
+    per_page: int
+    data: List[TransactionResponse]
+
+
 # ---------------------------------------------------------
 # ASSET SCHEMAS
 # ---------------------------------------------------------
@@ -58,11 +67,15 @@ class AssetCreate(BaseModel):
     symbol: str
     quantity: float
     buy_price: float
+    company_name: Optional[str] = None
+    asset_class: str = "Stock"
 
 
 class AssetResponse(BaseModel):
     """Returns asset/investment data"""
     symbol: str
+    company_name: Optional[str] = None
+    asset_class: str = "Stock"
     quantity: float
     buy_price: float
 
@@ -76,11 +89,13 @@ class AssetResponse(BaseModel):
 class PositionResponse(BaseModel):
     """Individual position in the portfolio"""
     symbol: str
+    company_name: Optional[str] = None
     units: float
     avg_buy_price: float
     current_price: float
     market_value: float
     gain_loss: float
+    gain_loss_percent: float
 
 
 class OverviewResponse(BaseModel):
@@ -88,28 +103,104 @@ class OverviewResponse(BaseModel):
     total_cost_basis: float
     total_portfolio_value: float
     overall_gain_loss: float
+    overall_gain_loss_percent: float
+    performance_today: float
+    performance_today_percent: float
+
+
+class AssetAllocationItem(BaseModel):
+    """Single item in asset allocation"""
+    asset_class: str
+    value: float
+    percentage: float
+    color: str
+
+
+class AssetAllocationResponse(BaseModel):
+    """Asset allocation for donut chart"""
+    labels: List[str]
+    values: List[float]
+    percentages: List[float]
+    colors: List[str]
+
+
+class PortfolioOverviewResponse(BaseModel):
+    """Complete portfolio overview response"""
+    total_portfolio_value: float
+    total_cost_basis: float
+    performance_today: float
+    performance_today_percent: float
+    overall_gain_loss: float
+    overall_gain_loss_percent: float
+    asset_allocation: AssetAllocationResponse
+
+
+class PositionTableResponse(BaseModel):
+    """Position for table display"""
+    symbol: str
+    company_name: str
+    units: float
+    avg_buy_price: float
+    current_price: float
+    market_value: float
+    gain_loss: float
+    gain_loss_percent: float
+
+
+class PaginatedPositionsResponse(BaseModel):
+    """Paginated positions response"""
+    total_positions: int
+    current_page: int
+    total_pages: int
+    per_page: int
+    data: List[PositionTableResponse]
 
 
 class PortfolioResponse(BaseModel):
-    """Complete portfolio response"""
-    positions: List[PositionResponse]
-    overview: OverviewResponse
+    """Complete portfolio response (legacy support)"""
 
 
 # ---------------------------------------------------------
 # GOAL SCHEMAS
 # ---------------------------------------------------------
 class GoalCreate(BaseModel):
-    target_name: str
+    """Schema for creating a new goal"""
+    goal_name: str
+    goal_type: str = "custom"  # retirement, home, education, custom, travel
     target_amount: float
+    target_date: Optional[str] = None  # ISO date string YYYY-MM-DD
+    monthly_contribution: float = 0.0
+    status: str = "active"  # active, paused, completed
 
 
-class GoalResponse(GoalCreate):
+class GoalUpdate(BaseModel):
+    """Schema for updating an existing goal"""
+    goal_name: Optional[str] = None
+    goal_type: Optional[str] = None
+    target_amount: Optional[float] = None
+    target_date: Optional[str] = None
+    monthly_contribution: Optional[float] = None
+    status: Optional[str] = None
+
+
+class GoalResponse(BaseModel):
+    """Schema for returning a goal"""
     id: int
-    owner_id: int
-    percent_complete: float = 0
-    current_balance: float = 0
+    user_id: int
+    goal_name: str
+    goal_type: str
+    target_amount: float
+    target_date: Optional[str] = None
+    monthly_contribution: float
+    status: str
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
+
+class PaginatedGoalsResponse(BaseModel):
+    """Paginated goals response"""
+    data: List[GoalResponse]
+    total_pages: int
+    current_page: int
