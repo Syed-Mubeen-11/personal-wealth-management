@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from . import models, schemas
-from ..database import SessionLocal
+from database import SessionLocal  # database.py path adjust chesukondi
+from app.goals import crud, schemas  # correct relative import
 
-router = APIRouter(prefix="/goals")
+router = APIRouter()
 
 def get_db():
     db = SessionLocal()
@@ -12,20 +12,10 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/")
-def create_goal(goal: schemas.Goal, db: Session = Depends(get_db)):
-    db_goal = models.GoalDB(
-        name=goal.name,
-        target_amount=goal.target_amount,
-        current_amount=goal.current_amount,
-        start_date=goal.start_date,
-        end_date=goal.end_date
-    )
-    db.add(db_goal)
-    db.commit()
-    db.refresh(db_goal)
-    return db_goal
+@router.post("/", response_model=schemas.Goal)
+def create_goal(goal: schemas.GoalCreate, db: Session = Depends(get_db)):
+    return crud.create_goal(db, goal)
 
-@router.get("/")
-def get_goals(db: Session = Depends(get_db)):
-    return db.query(models.GoalDB).all()
+@router.get("/", response_model=list[schemas.Goal])
+def read_goals(db: Session = Depends(get_db)):
+    return crud.get_goals(db)

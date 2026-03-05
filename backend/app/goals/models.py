@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, Numeric, Date
-from ..database import Base
+from app.database import Base
 
-class GoalDB(Base):
-    __tablename__ = "goals"  # table name in DB
+class Goal(Base):
+    __tablename__ = "goals"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
