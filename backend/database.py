@@ -15,5 +15,7 @@ if not DATABASE_URL:
 
 # 4. Standard PostgreSQL connection setup
 engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 Base = declarative_base()
