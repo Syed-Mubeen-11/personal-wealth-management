@@ -7,10 +7,13 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Use PostgreSQL
-DATABASE_URL = "postgresql://postgres:aabel@localhost/users_db"
+# Use SQLite from environment
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./wealth_management.db")
 
-engine = create_engine(DATABASE_URL)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
