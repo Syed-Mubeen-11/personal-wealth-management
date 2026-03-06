@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin
+from app.schemas.user import UserCreate, UserLogin, UserUpdate
 from app.core.security import hash_password, verify_password, create_access_token, decode_token
 
 
@@ -90,6 +90,7 @@ def get_current_user(
     return user
 
 #____________________________________________________________________
+# Profile
 
 @router.get("/me")
 def get_profile(current_user: User = Depends(get_current_user)):
@@ -97,5 +98,31 @@ def get_profile(current_user: User = Depends(get_current_user)):
         "id": current_user.id,
         "full_name": current_user.full_name,
         "email": current_user.email,
-        "risk_profile": current_user.risk_profile
+        "phone_number": current_user.phone_number,
+        "address": current_user.address,
+        "risk_profile": current_user.risk_profile,
+        "kyc_status": current_user.kyc_status
+    }
+
+
+#________________________________________________________________________________________________
+# Updating profile
+
+@router.put("/update")
+def update_profile(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    update_data = user_update.dict(exclude_unset=True)
+
+    for key, value in update_data.items():
+        setattr(current_user, key, value)
+
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Profile updated successfully",
+        "user": current_user
     }

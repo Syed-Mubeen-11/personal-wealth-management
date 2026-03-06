@@ -9,6 +9,12 @@ class UserCreate(BaseModel):
     phone_number: Optional[str] = None
     address: Optional[str] = None
     risk_profile: Optional[str] = "moderate"
+    
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    address: Optional[str] = None
+    risk_profile: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: int

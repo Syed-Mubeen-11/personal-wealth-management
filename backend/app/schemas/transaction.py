@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 class TransactionCreate(BaseModel):
     symbol: str
@@ -20,6 +21,7 @@ class TransactionResponse(BaseModel):
     quantity: float
     price: float
     fees: float
+    executed_at: datetime
 
     class Config:
         orm_mode = True

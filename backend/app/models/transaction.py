@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy.sql import func
 from app.core.database import Base
 
 class Transaction(Base):
@@ -10,10 +11,12 @@ class Transaction(Base):
 
     symbol = Column(String, nullable=False)
 
-    type = Column(String, nullable=False)  # buy / sell / dividend
+    type = Column(String, nullable=False)  # buy, sell, dividend, etc.
 
     quantity = Column(Float, nullable=False)
 
     price = Column(Float, nullable=False)
 
-    fees = Column(Float, default=0.0)
+    fees = Column(Float, default=0)
+
+    executed_at = Column(DateTime, server_default=func.now())
