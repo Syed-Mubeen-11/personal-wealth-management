@@ -14,7 +14,6 @@ class TransactionTypeEnum(str, Enum):
 #  Create Transaction
 class TransactionCreate(BaseModel):
     investment_id: int
-    symbol: str
     type: TransactionTypeEnum
     quantity: float
     price: float

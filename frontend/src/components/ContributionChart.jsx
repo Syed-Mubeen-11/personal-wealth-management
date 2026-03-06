@@ -1,67 +1,65 @@
-import React, { useContext } from "react";
+import React from "react";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
+  ResponsiveContainer
 } from "recharts";
-import { ThemeContext } from "../context/Themecontext";
 
-const data = [
-  { name: "Jan", monthly: 20000 },
-  { name: "Feb", monthly: 25000 },
-  { name: "Mar", monthly: 30000 },
-  { name: "Apr", monthly: 35000 },
-  { name: "May", monthly: 40000 },
-];
+function ContributionChart({ goal }) {
 
-function ContributionChart() {
-  const { darkMode } = useContext(ThemeContext);
+  if (!goal) {
+    return <p className="text-gray-500">No goal selected</p>;
+  }
+
+  const monthly = Number(goal.monthly_contribution);
+
+  const data = [
+    {
+      name: "Daily",
+      amount: (monthly / 30).toFixed(0)
+    },
+    {
+      name: "Weekly",
+      amount: (monthly / 4.3).toFixed(0)
+    },
+    {
+      name: "Monthly",
+      amount: monthly
+    },
+    {
+      name: "Yearly",
+      amount: monthly * 12
+    }
+  ];
 
   return (
-    <div
-      className={`p-5 rounded-xl shadow transition-all duration-300 ${
-        darkMode
-          ? "bg-gray-800 border border-gray-700 text-white"
-          : "bg-white border border-gray-100 text-gray-900"
-      }`}
-    >
-      <h2 className={`text-lg font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>
-        Monthly Contribution Growth
-      </h2>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke={darkMode ? "#374151" : "#e5e7eb"}
-          />
-          <XAxis
-            dataKey="name"
-            tick={{ fill: darkMode ? "#f9fafb" : "#111827" }}
-          />
-          <YAxis
-            tick={{ fill: darkMode ? "#f9fafb" : "#111827" }}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: darkMode ? "#1f2937" : "#fff",
-              border: "none",
-              color: darkMode ? "#f9fafb" : "#111827",
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="monthly"
-            stroke={darkMode ? "#6366F1" : "#2563eb"}
-            strokeWidth={3}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height={300}>
+
+      <BarChart data={data}>
+
+        <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis dataKey="name" />
+
+        <YAxis />
+
+        <Tooltip />
+
+        <Bar
+          dataKey="amount"
+          fill="#3b82f6"
+          radius={[5, 5, 0, 0]}
+        />
+
+      </BarChart>
+
+    </ResponsiveContainer>
+
   );
 }
 

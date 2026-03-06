@@ -41,7 +41,7 @@ def create_transaction(
     new_transaction = Transaction(
         user_id=current_user.id,
         investment_id=transaction.investment_id,
-        symbol=transaction.symbol, #or symbol=investments.symbol
+        symbol=investment.symbol, #or symbol=investments.symbol
         type=transaction.type,
         quantity=transaction.quantity,
         price=transaction.price,

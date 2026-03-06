@@ -1,96 +1,208 @@
-import React, { useContext } from "react";
-import SummaryCard from "../components/SummaryCard";
-import ChartCard from "../components/ChartCard";
-import { ThemeContext } from "../context/Themecontext";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import PortfolioSummary from "../components/PortfolioSummary";
+import InvestmentsTable from "../components/InvestmentsTable";
 
-const positions = [
-  { asset: "Apple", quantity: 10, avgCost: 150, currentPrice: 175 },
-  { asset: "Tesla", quantity: 5, avgCost: 600, currentPrice: 650 },
-  { asset: "HDFC Bank", quantity: 20, avgCost: 1400, currentPrice: 1550 },
-];
+function Portfolio() {
 
-const Portfolio = () => {
-  const { darkMode } = useContext(ThemeContext);
+  const [investments, setInvestments] = useState([]);
 
-  const totalInvested = positions.reduce(
-    (acc, item) => acc + item.quantity * item.avgCost,
-    0
-  );
+  const [formData, setFormData] = useState({
+    symbol: "",
+    asset_type: "",
+    units: "",
+    avg_buy_price: ""
+  });
 
-  const totalValue = positions.reduce(
-    (acc, item) => acc + item.quantity * item.currentPrice,
-    0
-  );
+  const [editId, setEditId] = useState(null);
 
-  const totalPL = totalValue - totalInvested;
+  const token = localStorage.getItem("token");
+
+  const fetchInvestments = async () => {
+
+    const res = await axios.get(
+      "http://localhost:8000/investments/",
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    setInvestments(res.data || []);
+
+  };
+
+
+  useEffect(() => {
+    fetchInvestments();
+  }, []);
+
+  const handleChange = (e) => {
+
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+
+  };
+
+  const createInvestment = async (e) => {
+
+    e.preventDefault();
+
+    await axios.post(
+      "http://localhost:8000/investments/",
+      formData,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    resetForm();
+    fetchInvestments();
+
+  };
+
+  const updateInvestment = async (e) => {
+
+    e.preventDefault();
+
+    await axios.put(
+      `http://localhost:8000/investments/${editId}`,
+      formData,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    resetForm();
+    fetchInvestments();
+
+  };
+
+  const deleteInvestment = async (id) => {
+
+    await axios.delete(
+      `http://localhost:8000/investments/${id}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    fetchInvestments();
+
+  };
+
+  const handleEdit = (inv) => {
+
+    setEditId(inv.id);
+
+    setFormData({
+      symbol: inv.symbol,
+      asset_type: inv.asset_type,
+      units: inv.units,
+      avg_buy_price: inv.avg_buy_price
+    });
+
+  };
+
+  const resetForm = () => {
+
+    setEditId(null);
+
+    setFormData({
+      symbol: "",
+      asset_type: "",
+      units: "",
+      avg_buy_price: ""
+    });
+
+  };
 
   return (
-    <div className={`space-y-8 ${darkMode ? "text-white" : "text-gray-900"}`}>
-      
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold">
-          Portfolio Overview
+
+    <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
+
+      <h1 className="text-3xl font-bold mb-6">
+        Portfolio Dashboard
+      </h1>
+
+      <PortfolioSummary investments={investments} />
+
+      {/* FORM */}
+
+      <form
+        onSubmit={editId ? updateInvestment : createInvestment}
+        className="bg-white p-6 rounded-xl shadow mb-8"
+      >
+
+        <h2 className="text-xl font-bold mb-4">
+          {editId ? "Update Investment" : "Create Investment"}
         </h2>
-        <p className={`${darkMode ? "text-gray-300" : "text-gray-500"} mt-1`}>
-          Track your investments and performance.
-        </p>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <SummaryCard title="Total Invested" value={`$${totalInvested}`} />
-        <SummaryCard title="Current Value" value={`$${totalValue}`} />
-        <SummaryCard title="Total Profit / Loss" value={`$${totalPL}`} />
-      </div>
+        <div className="grid grid-cols-2 gap-4">
 
-      {/* Positions Table */}
-      <div className={`p-6 rounded-xl shadow-sm overflow-x-auto ${darkMode ? "bg-gray-800" : "bg-white"}`}>
-        <h3 className={`text-lg font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>
-          Positions
-        </h3>
-        <table className="min-w-full text-sm text-left">
-          <thead className={`border-b ${darkMode ? "border-gray-600" : "border-gray-300"}`}>
-            <tr>
-              <th className="py-2">Asset</th>
-              <th className="py-2">Quantity</th>
-              <th className="py-2">Avg Cost</th>
-              <th className="py-2">Current Price</th>
-              <th className="py-2">Total Value</th>
-              <th className="py-2">P/L</th>
-            </tr>
-          </thead>
-          <tbody>
-            {positions.map((item, index) => {
-              const invested = item.quantity * item.avgCost;
-              const current = item.quantity * item.currentPrice;
-              const pl = current - invested;
+          <input
+            name="symbol"
+            placeholder="Symbol"
+            value={formData.symbol}
+            onChange={handleChange}
+            className="border p-2 rounded"
+            required
+          />
 
-              return (
-                <tr key={index} className={`border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-                  <td className={`${darkMode ? "text-gray-200" : ""} py-3`}>{item.asset}</td>
-                  <td className={`${darkMode ? "text-gray-200" : ""}`}>{item.quantity}</td>
-                  <td className={`${darkMode ? "text-gray-200" : ""}`}>${item.avgCost}</td>
-                  <td className={`${darkMode ? "text-gray-200" : ""}`}>${item.currentPrice}</td>
-                  <td className={`${darkMode ? "text-gray-200" : ""}`}>${current}</td>
-                  <td className={pl >= 0 ? "text-green-500 font-medium" : "text-red-500 font-medium"}>
-                    ${pl}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+          <input
+            name="asset_type"
+            placeholder="Asset Type"
+            value={formData.asset_type}
+            onChange={handleChange}
+            className="border p-2 rounded"
+            required
+          />
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ChartCard title="Portfolio Growth" type="line" />
-        <ChartCard title="Asset Allocation" type="pie" />
-      </div>
+          <input
+            name="units"
+            type="number"
+            placeholder="Units"
+            value={formData.units}
+            onChange={handleChange}
+            className="border p-2 rounded"
+            required
+          />
+
+          <input
+            name="avg_buy_price"
+            type="number"
+            placeholder="Average Price"
+            value={formData.avg_buy_price}
+            onChange={handleChange}
+            className="border p-2 rounded"
+            required
+          />
+
+        </div>
+
+        <div className="flex gap-3 mt-4">
+
+          <button className="bg-blue-600 text-white px-4 py-2 rounded">
+            {editId ? "Update" : "Create"}
+          </button>
+
+          {editId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="bg-gray-500 text-white px-4 py-2 rounded"
+            >
+              Cancel
+            </button>
+          )}
+
+        </div>
+
+      </form>
+
+      <InvestmentsTable
+        investments={investments}
+        onEdit={handleEdit}
+        onDelete={deleteInvestment}
+      />
 
     </div>
-  );
-};
 
-export default Portfolio;
+  );
+
+}
+
+export default Portfolio; 
