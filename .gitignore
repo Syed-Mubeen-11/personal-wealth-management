@@ -41,6 +41,11 @@ frontend/dist/
 backend/node_modules/
 backend/.env
 backend/dist/
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
 
 # Lock files (optional - uncomment to ignore)
 # package-lock.json
