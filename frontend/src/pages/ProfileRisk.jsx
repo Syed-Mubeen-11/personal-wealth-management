@@ -276,36 +276,29 @@ export default function ProfileRisk() {
                   {riskLevels.map((level) => {
                     const isSelected = profile.risk_profile === level.id;
                     return (
-                      <div
+                      <label
                         key={level.id}
-                        onClick={() => setProfile({ ...profile, risk_profile: level.id })}
-                        className={`group cursor-pointer p-5 rounded-2xl border-2 transition-all duration-300 relative overflow-hidden flex flex-col gap-2 ${isSelected ? `border-transparent shadow-lg transform -translate-y-1` : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}
+                        className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isSelected ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
                       >
-                        {isSelected && (
-                          <>
-                            {/* Animated Gradient border equivalent for selected state */}
-                            <div className={`absolute inset-0 bg-gradient-to-r ${level.color} opacity-[0.08]`} />
-                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b ${level.color}`} />
-                          </>
-                        )}
-                        <div className="flex items-center justify-between relative z-10">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isSelected ? level.badge : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>
-                              {level.icon}
-                            </div>
-                            <span className={`font-bold text-lg capitalize tracking-tight ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
-                              {level.title}
-                            </span>
-                          </div>
-
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-transparent bg-slate-900' : 'border-slate-300'}`}>
-                            {isSelected && <CheckCircle className="w-4 h-4 text-white" />}
-                          </div>
+                        <div className="flex items-center h-6">
+                          <input
+                            type="radio"
+                            name="risk_profile"
+                            value={level.id}
+                            checked={isSelected}
+                            onChange={(e) => setProfile({ ...profile, risk_profile: e.target.value })}
+                            className="w-5 h-5 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                          />
                         </div>
-                        <p className={`text-sm leading-relaxed relative z-10 ml-[3.25rem] ${isSelected ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
-                          {level.desc}
-                        </p>
-                      </div>
+                        <div className="flex flex-col">
+                          <span className={`font-bold text-lg capitalize tracking-tight ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>
+                            {level.title}
+                          </span>
+                          <span className={`${isSelected ? 'text-indigo-700' : 'text-slate-500'} text-sm mt-1 leading-relaxed`}>
+                            {level.desc}
+                          </span>
+                        </div>
+                      </label>
                     );
                   })}
                 </div>
