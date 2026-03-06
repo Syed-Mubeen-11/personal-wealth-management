@@ -57,8 +57,8 @@ class User(Base):
     phone_number = Column(String, nullable=True)
     residential_address = Column(String, nullable=True)
     date_of_birth = Column(Date, nullable=True)
-    risk_profile = Column(Enum(RiskEnum), default=RiskEnum.moderate)
-    kyc_status = Column(Enum(KYCEnum), default=KYCEnum.unverified)
+    risk_profile = Column("riskprofile", Enum(RiskEnum), default=RiskEnum.moderate)
+    kyc_status = Column("kycstatus", Enum(KYCEnum), default=KYCEnum.unverified)
     
     createdat = Column(TIMESTAMP, default=datetime.utcnow)
 

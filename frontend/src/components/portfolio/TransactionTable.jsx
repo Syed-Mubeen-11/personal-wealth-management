@@ -43,7 +43,7 @@ function TransactionTable({
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="p-6 border-b border-gray-100">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-gray-900">Transaction Management</h3>
+                    <h3 className="text-lg font-bold text-gray-900">Transactions Table</h3>
                 </div>
                 
                 {/* Search and Filter Row */}

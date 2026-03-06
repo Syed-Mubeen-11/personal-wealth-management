@@ -11,6 +11,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import api from "../api";
 
 function Goals() {
   const [formData, setFormData] = useState({
@@ -31,18 +32,34 @@ function Goals() {
   const [suggestedContribution, setSuggestedContribution] = useState(0);
   const [suggestedLabel, setSuggestedLabel] = useState("");
 
-  /* Load stored goals */
+  /* Load goals from backend API */
+  const fetchGoals = async () => {
+    try {
+      const res = await api.get('/goals');
+      // Map backend response to frontend format
+      const mapped = (res.data.data || res.data || []).map(g => ({
+        id: g.id,
+        name: g.goal_name,
+        target: g.target_amount,
+        contribution: g.monthly_contribution,
+        deadline: g.target_date,
+        frequency: "Monthly",
+        progress: g.monthly_contribution && g.target_amount 
+          ? Math.min(100, (g.monthly_contribution / g.target_amount) * 100)
+          : 0
+      }));
+      setGoals(mapped);
+    } catch (err) {
+      console.error("Failed to load goals from API:", err);
+      // Fallback to localStorage if API fails
+      const stored = localStorage.getItem("goals");
+      if (stored) setGoals(JSON.parse(stored));
+    }
+  };
 
   useEffect(() => {
-    const stored = localStorage.getItem("goals");
-    if (stored) setGoals(JSON.parse(stored));
+    fetchGoals();
   }, []);
-
-  /* Save goals */
-
-  useEffect(() => {
-    localStorage.setItem("goals", JSON.stringify(goals));
-  }, [goals]);
 
   const formatINR = (num) => "₹" + Number(num || 0).toLocaleString("en-IN");
 
@@ -126,9 +143,9 @@ function Goals() {
     }
   };
 
-  /* Add goal */
+  /* Add goal - POST to backend API */
 
-  const addGoal = () => {
+  const addGoal = async () => {
     if (!formData.name) return;
 
     const exists = goals.find(
@@ -140,30 +157,61 @@ function Goals() {
       return;
     }
 
-    const progress = (formData.contribution / formData.target) * 100;
+    // Calculate monthly contribution based on frequency
+    let monthlyContrib = parseFloat(formData.contribution) || 0;
+    if (formData.frequency === "Weekly") monthlyContrib = monthlyContrib * 4;
+    if (formData.frequency === "Daily") monthlyContrib = monthlyContrib * 30;
+    if (formData.frequency === "Yearly") monthlyContrib = monthlyContrib / 12;
 
-    const newGoal = {
-      name: formData.name,
-      target: formData.target,
-      contribution: formData.contribution,
-      frequency: formData.frequency,
-      progress: progress > 100 ? 100 : progress,
+    const payload = {
+      goal_name: formData.name,
+      goal_type: "custom",
+      target_amount: parseFloat(formData.target) || 0,
+      target_date: formData.deadline || null,
+      monthly_contribution: monthlyContrib,
+      status: "active"
     };
 
-    setGoals([...goals, newGoal]);
-
-    setFormData({
-      name: "",
-      target: "",
-      contribution: "",
-      deadline: "",
-      frequency: "Monthly",
-    });
+    try {
+      console.log("Creating goal with payload:", payload);
+      const res = await api.post('/goals', payload);
+      console.log("Goal created:", res.data);
+      
+      // Refresh goals from backend
+      await fetchGoals();
+      
+      setFormData({
+        name: "",
+        target: "",
+        contribution: "",
+        deadline: "",
+        frequency: "Monthly",
+      });
+      
+      alert("Goal saved successfully!");
+    } catch (err) {
+      console.error("Failed to create goal:", err.response?.data || err.message);
+      alert(`Failed to save goal: ${err.response?.data?.detail || err.message}`);
+    }
   };
 
-  /* Delete goal */
+  /* Delete goal - DELETE from backend API */
 
-  const deleteGoal = (index) => {
+  const deleteGoal = async (index) => {
+    const goal = goals[index];
+    if (!goal) return;
+
+    if (goal.id) {
+      try {
+        await api.delete(`/goals/${goal.id}`);
+        console.log("Goal deleted from database");
+      } catch (err) {
+        console.error("Failed to delete goal:", err.response?.data || err.message);
+        alert(`Failed to delete: ${err.response?.data?.detail || err.message}`);
+        return;
+      }
+    }
+    
     const updated = [...goals];
     updated.splice(index, 1);
     setGoals(updated);

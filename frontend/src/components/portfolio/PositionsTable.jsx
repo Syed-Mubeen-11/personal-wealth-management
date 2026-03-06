@@ -13,7 +13,7 @@ function PositionsTable({ positions, currentPage, totalPages, onPageChange, onMa
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-gray-900">Current Positions</h3>
+                <h3 className="text-lg font-bold text-gray-900">Investments Table</h3>
                 {onManagePositions && (
                     <button 
                         onClick={onManagePositions}

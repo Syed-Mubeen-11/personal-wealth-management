@@ -68,20 +68,36 @@ export default function ProfileRisk() {
     setLoading(true);
     setMessage('');
     try {
+      // Convert date from DD-MM-YYYY to YYYY-MM-DD for backend
+      let formattedDate = profile.date_of_birth;
+      if (formattedDate && formattedDate.includes('-')) {
+        const parts = formattedDate.split('-');
+        // If it looks like DD-MM-YYYY, flip it to YYYY-MM-DD
+        if (parts[0].length === 2 && parts.length === 3) {
+          formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+
       const payload = {
         name: profile.name || null,
         phone_number: profile.phone_number || null,
         residential_address: profile.residential_address || null,
-        date_of_birth: profile.date_of_birth || null,
+        date_of_birth: formattedDate || null,
         risk_profile: profile.risk_profile || 'moderate'
       };
-      await api.put('/profile/', payload);
+      
+      console.log("Sending profile update payload:", payload);
+      const response = await api.put('/profile/', payload);
+      console.log("Profile update response:", response.data);
+      
       setMessage('success: Profile integrated and saved successfully!');
       setTimeout(() => setMessage(''), 4000);
-    } catch (err) {
-      console.error(err);
-      setMessage('error: Failed to sync profile with database.');
-      setTimeout(() => setMessage(''), 4000);
+    } catch (error) {
+      console.error("Profile Update Error:", error.response?.data || error.message);
+      const detail = error.response?.data?.detail;
+      const errorMsg = typeof detail === 'object' ? JSON.stringify(detail) : (detail || "Server error");
+      setMessage(`error: Failed to save - ${errorMsg}`);
+      setTimeout(() => setMessage(''), 6000);
     }
     setLoading(false);
   };

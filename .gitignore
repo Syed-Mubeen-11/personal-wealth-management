@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Node
 node_modules/
 npm-debug.log
@@ -51,3 +52,29 @@ __pycache__/
 # package-lock.json
 # pnpm-lock.yaml
 # yarn.lock
+=======
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+>>>>>>> bf3d4034d67f98e5d486f6469e73cf7487de712b
