@@ -19,8 +19,8 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
-    riskprofile: str
-    kycstatus: str
+    risk_profile: str
+    kyc_status: str
     
     class Config:
         from_attributes = True

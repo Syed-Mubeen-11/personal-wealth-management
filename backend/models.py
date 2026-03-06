@@ -52,8 +52,14 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
-    riskprofile = Column(Enum(RiskEnum), default=RiskEnum.moderate)
-    kycstatus = Column(Enum(KYCEnum), default=KYCEnum.unverified)
+    
+    # Newly added mapping for profile
+    phone_number = Column(String, nullable=True)
+    residential_address = Column(String, nullable=True)
+    date_of_birth = Column(Date, nullable=True)
+    risk_profile = Column(Enum(RiskEnum), default=RiskEnum.moderate)
+    kyc_status = Column(Enum(KYCEnum), default=KYCEnum.unverified)
+    
     createdat = Column(TIMESTAMP, default=datetime.utcnow)
 
     # Relationships

@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Shield, History, User, Activity } from 'lucide-react';
+import {
+  AlertCircle, CheckCircle, Shield, History, User, Activity,
+  MapPin, Phone, Mail, Calendar, TrendingUp, TrendingDown,
+  Layers, Lock, Database
+} from 'lucide-react';
 import api from '../api';
 
 export default function ProfileRisk() {
-  const [activeTab, setActiveTab] = useState('profile'); // profile, history
+  const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState({
     name: '',
     email: '',
@@ -45,7 +49,7 @@ export default function ProfileRisk() {
       setHistory(res.data.data || []);
     } catch (err) {
       console.error("Error fetching history:", err);
-      // Fallback to non-paginated just in case
+      // Fallback to non-paginated
       try {
         const resList = await api.get('/transactions');
         setHistory(resList.data || []);
@@ -72,247 +76,310 @@ export default function ProfileRisk() {
         risk_profile: profile.risk_profile || 'moderate'
       };
       await api.put('/profile/', payload);
-      setMessage('success: Profile updated successfully!');
-      setTimeout(() => setMessage(''), 3000);
+      setMessage('success: Profile integrated and saved successfully!');
+      setTimeout(() => setMessage(''), 4000);
     } catch (err) {
       console.error(err);
-      setMessage('error: Failed to update profile.');
-      setTimeout(() => setMessage(''), 3000);
+      setMessage('error: Failed to sync profile with database.');
+      setTimeout(() => setMessage(''), 4000);
     }
     setLoading(false);
   };
 
+  const riskLevels = [
+    { id: 'conservative', title: 'Conservative', icon: <TrendingDown className="w-5 h-5" />, desc: 'Prioritizes capital protection with stable, lower returns.', color: 'from-blue-500 to-cyan-400', badge: 'text-blue-700 bg-blue-100' },
+    { id: 'moderate', title: 'Moderate', icon: <Layers className="w-5 h-5" />, desc: 'Balances capital growth with acceptable levels of market risk.', color: 'from-indigo-500 to-purple-400', badge: 'text-indigo-700 bg-indigo-100' },
+    { id: 'aggressive', title: 'Aggressive', icon: <TrendingUp className="w-5 h-5" />, desc: 'Maximizes growth potential, fully accepting high volatility.', color: 'from-rose-500 to-orange-400', badge: 'text-rose-700 bg-rose-100' }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#F0F2F5] p-6 lg:p-10">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gray-50 pb-16 font-sans selection:bg-indigo-100">
 
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-[#1B3C53] tracking-tight">Profile & Risk Management</h1>
-            <p className="text-gray-500 mt-1">Manage your personal information, risk tolerance, and view history.</p>
-          </div>
-          {message && (
-            <div className={`px-4 py-3 rounded-lg font-medium text-sm transition-all shadow-sm flex items-center gap-2 ${message.startsWith('success') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-              {message.startsWith('success') ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-              {message.split(': ')[1]}
-            </div>
-          )}
+      {/* Dynamic Header */}
+      <div className="relative bg-white pt-12 pb-24 lg:pt-16 lg:pb-32 overflow-hidden shadow-sm">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-0 left-[-10%] w-[120%] h-[120%] bg-gradient-to-br from-slate-100 via-indigo-50/20 to-teal-50/30 -rotate-3 transform origin-top blur-3xl" />
         </div>
+        <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-xs mb-4 uppercase tracking-wider backdrop-blur-md">
+              <Database className="w-3.5 h-3.5" /> Backend Synced
+            </div>
+            <h1 className="text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Profile &amp; Risk<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-teal-500">Management</span>
+            </h1>
+            <p className="text-slate-500 mt-4 max-w-lg text-lg">Control your identity, manage your personal data, and set up your investment risk appetite securely.</p>
+          </div>
 
-        {/* Tabs */}
-        <div className="flex space-x-2 bg-white p-1.5 rounded-xl shadow-sm border border-gray-200 w-full max-w-sm">
+          {/* Custom Animated Notification */}
+          <div className={`transition-all duration-500 transform ${message ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}`}>
+            <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl border backdrop-blur-md ${message.startsWith('success') ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800' : 'bg-rose-500/10 border-rose-500/20 text-rose-800'}`}>
+              <div className={`p-2 rounded-full ${message.startsWith('success') ? 'bg-emerald-500' : 'bg-rose-500'} text-white shadow-lg`}>
+                {message.startsWith('success') ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+              </div>
+              <p className="font-semibold">{message.split(': ')[1]}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 lg:px-12 -mt-12 relative z-20">
+
+        {/* Floating Custom Tabs */}
+        <div className="flex p-1.5 bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-slate-200 w-full max-w-md mx-auto mb-10 overflow-hidden relative">
+          <div
+            className={`absolute top-1.5 bottom-1.5 left-1.5 right-1/2 bg-slate-900 rounded-xl transition-transform duration-300 ease-in-out shadow-sm ${activeTab === 'history' ? 'translate-x-[calc(100%-8px)]' : 'translate-x-0'}`}
+          />
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'profile' ? 'bg-[#234C6A] text-white shadow' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 text-sm font-bold z-10 transition-colors duration-300 ${activeTab === 'profile' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}
           >
-            <User className="w-4 h-4" />
-            Profile & Risk
+            <User className="w-4 h-4" /> Attributes
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'history' ? 'bg-[#234C6A] text-white shadow' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 text-sm font-bold z-10 transition-colors duration-300 ${activeTab === 'history' ? 'text-white' : 'text-slate-500 hover:text-slate-800'}`}
           >
-            <History className="w-4 h-4" />
-            User History
+            <History className="w-4 h-4" /> Activity Log
           </button>
         </div>
 
-        {activeTab === 'profile' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 fade-in">
-            {/* Left Column: Personal Info */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8">
-                <div className="flex items-center justify-between mb-8 border-b pb-4 border-gray-100">
-                  <h2 className="text-xl font-bold text-[#1B3C53] flex items-center gap-2">
-                    <User className="w-5 h-5 text-[#234C6A]" />
-                    Personal Details
-                  </h2>
+        {activeTab === 'profile' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
+
+            {/* Left section: Personal Form */}
+            <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-8">
+              <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 p-8 lg:p-10 border border-slate-100 relative overflow-hidden group">
+                {/* Decorative background glass */}
+                <div className="absolute top-0 right-0 p-8 opacity-0 group-hover:opacity-10 transition-opacity duration-700 -rotate-12 pointer-events-none">
+                  <User className="w-64 h-64 text-slate-900" />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                <h2 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
+                  <User className="w-6 h-6 text-indigo-500" /> Identity Details
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-7 relative z-10">
+                  <div className="md:col-span-2">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-600 mb-2">
+                      <User className="w-4 h-4 text-slate-400" /> Full Legal Name
+                    </label>
                     <input
                       type="text" name="name"
                       value={profile.name} onChange={handleProfileChange}
-                      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#234C6A] focus:border-[#234C6A] transition-all outline-none"
-                      placeholder="e.g. Jane Doe"
+                      className="w-full bg-slate-50 hover:bg-slate-100 border-none p-4 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:bg-white transition-all text-slate-700 font-semibold outline-none shadow-inner"
+                      placeholder="e.g. Satoshi Nakamoto"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-600 mb-2">
+                      <Mail className="w-4 h-4 text-slate-400" /> Registered Email
+                    </label>
                     <input
                       type="email" disabled
                       value={profile.email}
-                      className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+                      className="w-full bg-slate-100/50 border-none p-4 rounded-2xl text-slate-400 font-medium cursor-not-allowed flex items-center"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-600 mb-2">
+                      <Phone className="w-4 h-4 text-slate-400" /> Mobile Number
+                    </label>
                     <input
                       type="tel" name="phone_number"
                       value={profile.phone_number} onChange={handleProfileChange}
-                      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#234C6A] focus:border-[#234C6A] transition-all outline-none"
+                      className="w-full bg-slate-50 hover:bg-slate-100 border-none p-4 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:bg-white transition-all text-slate-700 font-semibold outline-none shadow-inner"
                       placeholder="+1 (555) 000-0000"
                     />
                   </div>
 
-                  <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Residential Address</label>
+                  <div className="md:col-span-2">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-600 mb-2">
+                      <MapPin className="w-4 h-4 text-slate-400" /> Primary Residence
+                    </label>
                     <input
                       type="text" name="residential_address"
                       value={profile.residential_address} onChange={handleProfileChange}
-                      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#234C6A] focus:border-[#234C6A] transition-all outline-none"
-                      placeholder="Full home address"
+                      className="w-full bg-slate-50 hover:bg-slate-100 border-none p-4 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:bg-white transition-all text-slate-700 font-semibold outline-none shadow-inner"
+                      placeholder="Full street address, city, zip code"
                     />
                   </div>
 
-                  <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
+                  <div className="md:col-span-2">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-600 mb-2">
+                      <Calendar className="w-4 h-4 text-slate-400" /> Date of Birth
+                    </label>
                     <input
                       type="date" name="date_of_birth"
                       value={profile.date_of_birth} onChange={handleProfileChange}
-                      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#234C6A] focus:border-[#234C6A] transition-all outline-none"
+                      className="w-full bg-slate-50 hover:bg-slate-100 border-none p-4 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:bg-white transition-all text-slate-700 font-semibold outline-none shadow-inner"
                     />
                   </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+                <div className="mt-10 pt-8 border-t border-slate-100 flex justify-end">
                   <button
                     onClick={handleSave}
                     disabled={loading}
-                    className="px-8 py-3 bg-[#234C6A] hover:bg-[#1B3C53] text-white font-semibold rounded-xl shadow-md transition-all disabled:opacity-70 flex items-center gap-2"
+                    className="relative px-8 py-4 bg-slate-900 overflow-hidden hover:bg-slate-800 text-white font-bold rounded-2xl shadow-xl shadow-slate-900/20 transition-all transform active:scale-95 disabled:opacity-70 group"
                   >
-                    {loading ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      'Save Profile Information'
-                    )}
+                    <div className="absolute inset-0 w-1/4 h-full bg-white/20 skew-x-12 -translate-x-[250%] group-hover:translate-x-[400%] transition-transform duration-700 ease-out" />
+                    <span className="relative flex items-center justify-center gap-2">
+                      {loading ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>Save Changes</>
+                      )}
+                    </span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Risk & KYC */}
-            <div className="space-y-6">
+            {/* Right Section: KYC & Risk */}
+            <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-8">
 
-              {/* KYC Status Card */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-[0.03]">
-                  <Shield className="w-32 h-32" />
-                </div>
-                <h3 className="text-lg font-bold text-[#1B3C53] mb-5 flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-[#234C6A]" />
-                  KYC Verification
-                </h3>
+              {/* Premium KYC Card */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-[1px] rounded-[2rem] shadow-2xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                <div className="bg-slate-900/90 backdrop-blur-3xl rounded-[2rem] p-8 h-full relative z-10 border border-slate-700/50">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-emerald-400" /> KYC Status
+                    </h3>
+                    <Lock className="w-5 h-5 text-slate-600" />
+                  </div>
 
-                <div className="flex items-center gap-4 bg-gray-100 p-5 rounded-xl border border-gray-200 relative z-10">
-                  {profile.kyc_status === 'verified' ? (
-                    <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                      <CheckCircle className="w-6 h-6" />
+                  <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 flex items-center gap-5 backdrop-blur-md">
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110 ${profile.kyc_status === 'verified' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
+                      {profile.kyc_status === 'verified' ? <CheckCircle className="w-7 h-7" /> : <AlertCircle className="w-7 h-7" />}
                     </div>
-                  ) : (
-                    <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                      <AlertCircle className="w-6 h-6" />
+                    <div>
+                      <h4 className="font-black text-white text-lg tracking-wider capitalize">{profile.kyc_status}</h4>
+                      <p className="text-sm text-slate-400 font-medium leading-tight mt-1">
+                        {profile.kyc_status === 'verified' ? "You're fully approved to trade." : "Identity check is pending."}
+                      </p>
                     </div>
-                  )}
-                  <div>
-                    <h4 className="font-bold text-gray-900 capitalize">{profile.kyc_status}</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {profile.kyc_status === 'verified' ? 'Identity is fully verified.' : 'Verification processing/pending.'}
-                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Risk Profile Card */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-bold text-[#1B3C53] mb-5 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-[#234C6A]" />
-                  Risk Profile
+              {/* Risk Profile Selector */}
+              <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 p-8 border border-slate-100">
+                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                  <Activity className="w-6 h-6 text-orange-500" /> Risk Assessment
                 </h3>
 
-                <div className="space-y-3">
-                  {['conservative', 'moderate', 'aggressive'].map((level) => (
-                    <div
-                      key={level}
-                      onClick={() => setProfile({ ...profile, risk_profile: level })}
-                      className={`group cursor-pointer py-4 px-5 rounded-xl border-2 transition-all duration-200 ${profile.risk_profile === level ? 'border-[#234C6A] bg-[#234C6A]/5' : 'border-gray-100 hover:border-[#234C6A]/30 hover:bg-gray-50'}`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`font-bold capitalize ${profile.risk_profile === level ? 'text-[#1B3C53]' : 'text-gray-700'}`}>
-                          {level}
-                        </span>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${profile.risk_profile === level ? 'border-[#234C6A]' : 'border-gray-300'}`}>
-                          {profile.risk_profile === level && <div className="w-2.5 h-2.5 bg-[#234C6A] rounded-full" />}
+                <div className="space-y-4">
+                  {riskLevels.map((level) => {
+                    const isSelected = profile.risk_profile === level.id;
+                    return (
+                      <div
+                        key={level.id}
+                        onClick={() => setProfile({ ...profile, risk_profile: level.id })}
+                        className={`group cursor-pointer p-5 rounded-2xl border-2 transition-all duration-300 relative overflow-hidden flex flex-col gap-2 ${isSelected ? `border-transparent shadow-lg transform -translate-y-1` : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'}`}
+                      >
+                        {isSelected && (
+                          <>
+                            {/* Animated Gradient border equivalent for selected state */}
+                            <div className={`absolute inset-0 bg-gradient-to-r ${level.color} opacity-[0.08]`} />
+                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b ${level.color}`} />
+                          </>
+                        )}
+                        <div className="flex items-center justify-between relative z-10">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isSelected ? level.badge : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>
+                              {level.icon}
+                            </div>
+                            <span className={`font-bold text-lg capitalize tracking-tight ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
+                              {level.title}
+                            </span>
+                          </div>
+
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-transparent bg-slate-900' : 'border-slate-300'}`}>
+                            {isSelected && <CheckCircle className="w-4 h-4 text-white" />}
+                          </div>
                         </div>
+                        <p className={`text-sm leading-relaxed relative z-10 ml-[3.25rem] ${isSelected ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
+                          {level.desc}
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-500 leading-relaxed">
-                        {level === 'conservative' && 'Prioritizes capital protection with stable, lower returns.'}
-                        {level === 'moderate' && 'Balances capital growth with acceptable levels of risk.'}
-                        {level === 'aggressive' && 'Maximizes growth potential, accepting high market volatility.'}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
             </div>
           </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden fade-in">
-            <div className="p-6 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-[#1B3C53] flex items-center gap-2">
-                <History className="w-5 h-5 text-[#234C6A]" />
-                Account Activity & Transacions
-              </h2>
+        )}
+
+        {/* History Tab */}
+        {activeTab === 'history' && (
+          <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden hidden-scrollbar transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 border border-slate-100 mb-10">
+            <div className="p-8 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                  <Database className="w-6 h-6 text-indigo-500" /> Account Logs
+                </h2>
+                <p className="text-sm font-semibold text-slate-500 mt-1">Ledger of all financial transactions mapped to you.</p>
+              </div>
             </div>
 
             {history.length === 0 ? (
-              <div className="py-20 text-center">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <History className="w-10 h-10 text-gray-300" />
+              <div className="py-24 text-center px-6">
+                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-inner">
+                  <History className="w-10 h-10 text-slate-300" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-700">No History Found</h3>
-                <p className="text-gray-500 mt-2">Any transactions mapping to your portfolio will appear here.</p>
+                <h3 className="text-2xl font-black text-slate-700 tracking-tight">Immaculately Empty</h3>
+                <p className="text-slate-500 mt-2 font-medium max-w-sm mx-auto">No transaction data has been appended to your encrypted profile matrix yet.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+              <div className="overflow-x-auto p-4">
+                <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
-                    <tr className="bg-white text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
-                      <th className="p-5 font-bold">Date / Time</th>
-                      <th className="p-5 font-bold">Type</th>
-                      <th className="p-5 font-bold">Asset Symbol</th>
-                      <th className="p-5 font-bold text-right">Amount / Qty</th>
+                    <tr>
+                      <th className="p-5 text-sm font-extrabold text-slate-400 tracking-widest uppercase border-b border-slate-100 bg-white sticky top-0">Timestamp</th>
+                      <th className="p-5 text-sm font-extrabold text-slate-400 tracking-widest uppercase border-b border-slate-100 bg-white sticky top-0">Action</th>
+                      <th className="p-5 text-sm font-extrabold text-slate-400 tracking-widest uppercase border-b border-slate-100 bg-white sticky top-0">Target Asset</th>
+                      <th className="p-5 text-sm font-extrabold text-slate-400 tracking-widest uppercase border-b border-slate-100 bg-white sticky top-0 text-right">Settlement</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-slate-50">
                     {history.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="p-5">
-                          <div className="font-medium text-gray-900">
-                            {new Date(item.date).toLocaleDateString()}
+                      <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
+                        <td className="p-5 whitespace-nowrap">
+                          <div className="font-bold text-slate-800">
+                            {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs font-semibold text-slate-400 mt-0.5">
                             {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </td>
                         <td className="p-5">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-bold
-                             ${item.transaction_type === 'Buy' || item.transaction_type === 'Contribution' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                          <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider
+                             ${item.transaction_type === 'Buy' || item.transaction_type === 'Contribution'
+                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                              : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
                             {item.transaction_type}
                           </span>
                         </td>
-                        <td className="p-5 text-sm font-bold text-gray-700">
-                          {item.asset_symbol || 'N/A'}
+                        <td className="p-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs ring-1 ring-slate-200">
+                              {item.asset_symbol?.charAt(0) || 'C'}
+                            </div>
+                            <span className="font-bold text-slate-700 tracking-tight text-sm">
+                              {item.asset_symbol || 'CASH_BAL'}
+                            </span>
+                          </div>
                         </td>
-                        <td className="p-5 text-sm font-bold text-gray-900 text-right">
-                          {item.amount && `$${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                          {item.quantity && <div className="text-gray-500 text-xs mt-1 font-medium">{item.quantity} units</div>}
+                        <td className="p-5 text-right">
+                          <div className="font-black text-slate-900 text-lg">
+                            ${item.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                          </div>
+                          {item.quantity && <div className="text-slate-400 text-xs mt-0.5 font-bold">{item.quantity} UNITS ALLOCATED</div>}
                         </td>
                       </tr>
                     ))}
@@ -322,6 +389,7 @@ export default function ProfileRisk() {
             )}
           </div>
         )}
+
       </div>
     </div>
   );

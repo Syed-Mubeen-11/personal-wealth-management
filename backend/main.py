@@ -142,7 +142,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         email=user.email, 
         password=hashed_pw, 
         name=user.name,
-        riskprofile=user.risk_profile 
+        risk_profile=user.risk_profile 
     )
     
     db.add(db_user)
