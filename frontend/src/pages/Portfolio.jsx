@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import PortfolioSummary from "../components/PortfolioSummary";
 import InvestmentsTable from "../components/InvestmentsTable";
+import StockPrice from "../components/StockPrice";
+import StockSearch from "../components/StockSearch";
 
 function Portfolio() {
 
@@ -133,45 +135,61 @@ function Portfolio() {
 
         <div className="grid grid-cols-2 gap-4">
 
-          <input
-            name="symbol"
-            placeholder="Symbol"
-            value={formData.symbol}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
+  <select
+    name="asset_type"
+    value={formData.asset_type}
+    onChange={handleChange}
+    className="border p-2 rounded"
+  >
+    <option value="">Select Asset Type</option>
+    <option value="stock">Stock</option>
+    <option value="etf">ETF</option>
+    <option value="mutual_fund">Mutual Fund</option>
+    <option value="bond">Bond</option>
+    <option value="cash">Cash</option>
+  </select>
 
-          <input
-            name="asset_type"
-            placeholder="Asset Type"
-            value={formData.asset_type}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
+  {(formData.asset_type === "stock" || formData.asset_type === "etf") ? (
+    <StockSearch
+      onSelect={(stock) =>
+        setFormData({
+          ...formData,
+          symbol: stock.symbol
+        })
+      }
+    />
+  ) : (
+    <input
+      name="symbol"
+      placeholder="Symbol / Name"
+      value={formData.symbol}
+      onChange={handleChange}
+      className="border p-2 rounded"
+      required
+    />
+  )}
 
-          <input
-            name="units"
-            type="number"
-            placeholder="Units"
-            value={formData.units}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
+  <input
+    name="units"
+    type="number"
+    placeholder="Units"
+    value={formData.units}
+    onChange={handleChange}
+    className="border p-2 rounded"
+    required
+  />
 
-          <input
-            name="avg_buy_price"
-            type="number"
-            placeholder="Average Price"
-            value={formData.avg_buy_price}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
+  <input
+    name="avg_buy_price"
+    type="number"
+    placeholder="Buy Price"
+    value={formData.avg_buy_price}
+    onChange={handleChange}
+    className="border p-2 rounded"
+    required
+  />
 
-        </div>
+</div>
 
         <div className="flex gap-3 mt-4">
 
@@ -192,11 +210,15 @@ function Portfolio() {
         </div>
 
       </form>
-
+      {formData.symbol && (
+      <StockPrice symbol={formData.symbol} />
+      )}
       <InvestmentsTable
         investments={investments}
         onEdit={handleEdit}
         onDelete={deleteInvestment}
+        fetchInvestments={fetchInvestments}
+
       />
 
     </div>

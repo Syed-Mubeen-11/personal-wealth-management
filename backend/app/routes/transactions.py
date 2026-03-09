@@ -98,7 +98,7 @@ def update_transaction(
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
-    transaction.symbol = transaction_data.symbol
+    #transaction.symbol = transaction_data.symbol
     transaction.type = transaction_data.type
     transaction.quantity = transaction_data.quantity
     transaction.price = transaction_data.price

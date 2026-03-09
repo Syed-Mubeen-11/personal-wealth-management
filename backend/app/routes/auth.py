@@ -10,6 +10,7 @@ from app.core.auth import get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends
 from app.schemas.user import UserUpdate, ChangePassword
+from app.models.user import KYCStatusEnum, User
 
 router = APIRouter()
 
@@ -120,3 +121,14 @@ def change_password(
     db.commit()
 
     return {"message": "Password updated successfully"}
+@router.put("/verify-kyc")
+def verify_kyc(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    current_user.kyc_status = KYCStatusEnum.verified
+
+    db.commit()
+
+    return {"message": "KYC verified"}

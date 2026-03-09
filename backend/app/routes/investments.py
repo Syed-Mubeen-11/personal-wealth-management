@@ -5,6 +5,9 @@ from app.models.investments import Investment
 from app.schemas.investments import InvestmentCreate, InvestmentResponse, InvestmentUpdate
 from app.models.user import User
 from app.core.auth import get_current_user
+from datetime import datetime
+import yfinance as yf
+from app.services.asset_price import get_asset_price
 
 router = APIRouter()
 
@@ -18,28 +21,26 @@ def get_db():
 
 
 #  Create Investment
-@router.post("/", response_model=InvestmentResponse)
-def create_investment(
-    investment: InvestmentCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    cost_basis = investment.units * investment.avg_buy_price
+@router.post("/investments/")
+def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
 
-    new_investment = Investment(
-        user_id=current_user.id,
-        asset_type=investment.asset_type,
-        symbol=investment.symbol,
-        units=investment.units,
-        avg_buy_price=investment.avg_buy_price,
-        cost_basis=cost_basis
+    price = get_asset_price(data.symbol, data.asset_type)
+
+    investment = Investment(
+        symbol=data.symbol,
+        asset_type=data.asset_type,
+        units=data.units,
+        avg_buy_price=data.avg_buy_price,
+        current_price=price,
+        last_price=price,
+        last_price_timestamp=datetime.utcnow()
     )
 
-    db.add(new_investment)
+    db.add(investment)
     db.commit()
-    db.refresh(new_investment)
-    return new_investment
+    db.refresh(investment)
 
+    return investment
 
 #  Get User Investments
 @router.get("/", response_model=list[InvestmentResponse])
@@ -95,3 +96,19 @@ def update_investment(
     db.commit()
     db.refresh(investment)
     return investment
+
+@router.post("/investments/{id}/refresh-price")
+def refresh_price(id: int, db: Session = Depends(get_db)):
+
+    inv = db.query(Investment).filter(Investment.id == id).first()
+
+    new_price = get_asset_price(inv.symbol, inv.asset_type)
+
+    inv.last_price = inv.current_price
+    inv.current_price = new_price
+    inv.last_price_timestamp = datetime.utcnow()
+
+    db.commit()
+    db.refresh(inv)
+
+    return inv

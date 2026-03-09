@@ -23,9 +23,9 @@ const SummaryCard = ({ title, value }) => {
           {value}
         </h3>
 
-        <span className="text-sm font-medium text-emerald-500 group-hover:translate-x-1 transition">
+        {/* <span className="text-sm font-medium text-emerald-500 group-hover:translate-x-1 transition">
           +2.4%
-        </span>
+        </span> */}
       </div>
     </div>
   );
