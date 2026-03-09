@@ -1,0 +1,12 @@
+| File             | Purpose                            |
+| ---------------- | ---------------------------------- |
+| app.py           | FastAPI main application           |
+| models.py        | ORM models                         |
+| schemas.py       | Request/Response models (Pydantic) |
+| settings.py      | DB configuration                   |
+| database.py      | DB connection                      |
+| auth.py          | password hashing & authentication  |
+
+
+Run server: uvicorn main:app --reload
+Open: http://127.0.0.1:8000/
