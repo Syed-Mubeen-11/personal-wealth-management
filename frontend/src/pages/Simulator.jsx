@@ -469,16 +469,69 @@ function Simulator() {
 
     // Share functionality
     const handleShare = () => {
-        const text = activeTab === 'sip' && sipResult
-            ? `Check out my SIP projection! Investing ${formatCurrency(sipForm.monthly_investment)}/month for ${sipForm.years} years at ${sipForm.expected_return_rate}% returns = ${formatCurrency(sipResult.total_value)}`
-            : activeTab === 'retirement' && retirementResult
-            ? `My retirement corpus projection: ${formatCurrency(retirementResult.corpus_at_retirement)} by age ${retirementForm.retirement_age}`
-            : activeTab === 'loan' && loanResult
-            ? `Loan payoff plan: ${formatCurrency(loanForm.principal)} loan paid off in ${loanResult.payoff_months} months`
-            : 'Check out the Wealth Tracker Simulator!';
+        let text = '';
+        const timestamp = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        
+        if (activeTab === 'sip' && sipResult) {
+            const returnMultiple = (sipResult.total_value / sipResult.total_invested).toFixed(2);
+            text = `📈 SIP Investment Projection
+
+💰 Monthly Investment: ${formatCurrency(sipForm.monthly_investment)}
+📅 Duration: ${sipForm.years} years
+📊 Expected Return: ${sipForm.expected_return_rate}% p.a.
+
+Results:
+✅ Total Invested: ${formatCurrency(sipResult.total_invested)}
+✅ Estimated Returns: ${formatCurrency(sipResult.estimated_returns)}
+🎯 Final Corpus: ${formatCurrency(sipResult.total_value)}
+📈 Return Multiple: ${returnMultiple}x
+
+Generated via Wealth Tracker • ${timestamp}`;
+        } else if (activeTab === 'retirement' && retirementResult) {
+            const yearsToRetire = retirementForm.retirement_age - retirementForm.current_age;
+            const corpusYears = retirementResult.corpus_lasts_until_age - retirementForm.retirement_age;
+            text = `🏖️ Retirement Planning Summary
+
+👤 Current Age: ${retirementForm.current_age} years
+🎯 Retirement Age: ${retirementForm.retirement_age} years
+⏳ Years to Retirement: ${yearsToRetire} years
+
+💵 Current Savings: ${formatCurrency(retirementForm.current_savings)}
+💰 Monthly Contribution: ${formatCurrency(retirementForm.monthly_contribution)}
+📊 Expected Return: ${retirementForm.expected_return_rate}% p.a.
+
+Results:
+🏦 Corpus at Retirement: ${formatCurrency(retirementResult.corpus_at_retirement)}
+💸 Monthly Income: ${formatCurrency(retirementResult.monthly_income_at_retirement)}
+📅 Corpus Lasts: ${corpusYears}+ years (until age ${retirementResult.corpus_lasts_until_age})
+📈 Total Returns: ${formatCurrency(retirementResult.total_returns)}
+
+Generated via Wealth Tracker • ${timestamp}`;
+        } else if (activeTab === 'loan' && loanResult) {
+            const yearsToPayoff = (loanResult.payoff_months / 12).toFixed(1);
+            text = `🏠 Loan Payoff Analysis
+
+💰 Principal: ${formatCurrency(loanForm.principal)}
+📊 Interest Rate: ${loanForm.annual_interest_rate}% p.a.
+📅 Original Term: ${loanForm.loan_term_months} months
+
+Results:
+💵 Monthly EMI: ${formatCurrency(loanResult.monthly_payment)}
+💸 Total Interest: ${formatCurrency(loanResult.total_interest)}
+✅ Payoff in: ${loanResult.payoff_months} months (~${yearsToPayoff} years)
+📅 Payoff Date: ${loanResult.payoff_date}${loanForm.extra_monthly_payment > 0 ? `
+
+🎉 With Extra Payment (${formatCurrency(loanForm.extra_monthly_payment)}/month):
+💰 Interest Saved: ${formatCurrency(loanResult.interest_saved_with_extra)}
+⏱️ Months Saved: ${loanResult.months_saved_with_extra} months` : ''}
+
+Generated via Wealth Tracker • ${timestamp}`;
+        } else {
+            text = 'Check out the Wealth Tracker Simulator for financial planning!';
+        }
 
         if (navigator.share) {
-            navigator.share({ title: 'Wealth Tracker Simulation', text });
+            navigator.share({ title: 'Wealth Tracker - Financial Report', text });
         } else {
             navigator.clipboard.writeText(text);
             alert('Results copied to clipboard!');
