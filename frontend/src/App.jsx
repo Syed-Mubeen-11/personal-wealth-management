@@ -1,37 +1,32 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./components/Login.jsx";
-import Register from "./components/Register.jsx";
-import Dashboard from "./components/Dashboard.jsx";
-import ProfileRisk from "./components/ProfileRisk.jsx";
-import Portfolio from "./components/Portfolio.jsx";
-import Transactions from "./components/Transactions.jsx";
-import RiskProfile from "./components/RiskProfile.jsx";
-import Goals from "./components/Goals.jsx";
-
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
+import Register from './pages/Register';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Incomes from './pages/Incomes';
+import Expenses from './pages/Expenses';
+import Goals from './pages/Goals';
+import Investments from './pages/Investments';
+import ProtectedRoute from './components/ProtectedRoute';
+import Analytics from './pages/Analytics';
+import Transactions from './pages/Transactions';
 
 function App() {
   return (
     <Router>
       <Routes>
-
-        {/* Login Page */}
-        <Route path="/" element={<Login />} />
-
-        {/* Register Page */}
+        <Route path="/" element={<LandingPage />} />
+        {/* We will add /login and /register routes next */}
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Dashboard and Nested Pages */}
-        <Route path="/dashboard" element={<Dashboard />}>
-          <Route index element={<ProfileRisk />} />
-          <Route path="profile" element={<ProfileRisk />} />
-          <Route path="portfolio" element={<Portfolio />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="riskprofile" element={<RiskProfile />} />
-          <Route path="goals" element={<Goals />} />
-        </Route>
-
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/incomes" element={<ProtectedRoute><Incomes /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+        <Route path="/goals" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
+        <Route path="/investments" element={<ProtectedRoute><Investments /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
       </Routes>
     </Router>
   );
