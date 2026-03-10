@@ -15,7 +15,7 @@ export default function ProfileRisk() {
     residential_address: '',
     date_of_birth: '',
     risk_profile: 'moderate',
-    kyc_status: 'pending'
+    kyc_status: 'unverified'
   });
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,15 +28,15 @@ export default function ProfileRisk() {
 
   const fetchProfile = async () => {
     try {
-      const res = await api.get('/api/profile-risk');
+      const res = await api.get('/profile/');
       setProfile({
-        name: res.data.full_name || '',
+        name: res.data.name || '',
         email: res.data.email || '',
         phone_number: res.data.phone_number || '',
         residential_address: res.data.residential_address || '',
         date_of_birth: res.data.date_of_birth || '',
         risk_profile: res.data.risk_profile || 'moderate',
-        kyc_status: res.data.kyc_status || 'pending'
+        kyc_status: res.data.kyc_status || 'unverified'
       });
     } catch (err) {
       console.error("Error fetching profile:", err);
@@ -49,6 +49,7 @@ export default function ProfileRisk() {
       setHistory(res.data.data || []);
     } catch (err) {
       console.error("Error fetching history:", err);
+      // Fallback to non-paginated
       try {
         const resList = await api.get('/transactions');
         setHistory(resList.data || []);
@@ -67,16 +68,26 @@ export default function ProfileRisk() {
     setLoading(true);
     setMessage('');
     try {
+      // Convert date from DD-MM-YYYY to YYYY-MM-DD for backend
+      let formattedDate = profile.date_of_birth;
+      if (formattedDate && formattedDate.includes('-')) {
+        const parts = formattedDate.split('-');
+        // If it looks like DD-MM-YYYY, flip it to YYYY-MM-DD
+        if (parts[0].length === 2 && parts.length === 3) {
+          formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+
       const payload = {
-        full_name: profile.name || null,
+        name: profile.name || null,
         phone_number: profile.phone_number || null,
         residential_address: profile.residential_address || null,
-        date_of_birth: profile.date_of_birth || null,
+        date_of_birth: formattedDate || null,
         risk_profile: profile.risk_profile || 'moderate'
       };
       
       console.log("Sending profile update payload:", payload);
-      const response = await api.put('/api/profile-risk', payload);
+      const response = await api.put('/profile/', payload);
       console.log("Profile update response:", response.data);
       
       setMessage('success: Profile integrated and saved successfully!');
@@ -258,15 +269,13 @@ export default function ProfileRisk() {
                   </div>
 
                   <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 flex items-center gap-5 backdrop-blur-md">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110 ${profile.kyc_status === 'verified' || profile.kyc_status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
-                      {profile.kyc_status === 'verified' || profile.kyc_status === 'completed' ? <CheckCircle className="w-7 h-7" /> : <AlertCircle className="w-7 h-7" />}
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110 ${profile.kyc_status === 'verified' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
+                      {profile.kyc_status === 'verified' ? <CheckCircle className="w-7 h-7" /> : <AlertCircle className="w-7 h-7" />}
                     </div>
                     <div>
-                      <h4 className="font-black text-white text-lg tracking-wider capitalize">
-                        {profile.kyc_status === 'verified' || profile.kyc_status === 'completed' ? 'Verified' : 'Unverified'}
-                      </h4>
+                      <h4 className="font-black text-white text-lg tracking-wider capitalize">{profile.kyc_status}</h4>
                       <p className="text-sm text-slate-400 font-medium leading-tight mt-1">
-                        {profile.kyc_status === 'verified' || profile.kyc_status === 'completed' ? "You're fully approved to trade." : "Identity check is pending."}
+                        {profile.kyc_status === 'verified' ? "You're fully approved to trade." : "Identity check is pending."}
                       </p>
                     </div>
                   </div>

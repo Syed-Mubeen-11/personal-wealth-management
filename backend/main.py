@@ -182,6 +182,88 @@ def update_profile(profile_update: UserProfileUpdate, db: Session = Depends(get_
     db.refresh(current_user)
     return current_user
 
+# --- PROFILE & RISK MANAGEMENT ROUTES ---
+@app.get("/api/profile-risk")
+def get_profile_risk(current_user: models.User = Depends(get_current_user)):
+    """Get user profile and risk settings"""
+    return {
+        "id": current_user.id,
+        "full_name": current_user.name,
+        "email": current_user.email,
+        "phone_number": current_user.phone_number,
+        "residential_address": current_user.residential_address,
+        "date_of_birth": current_user.date_of_birth.isoformat() if current_user.date_of_birth else None,
+        "risk_profile": current_user.risk_profile.value if hasattr(current_user.risk_profile, 'value') else (current_user.risk_profile or "moderate"),
+        "kyc_status": current_user.kyc_status.value if hasattr(current_user.kyc_status, 'value') else (current_user.kyc_status or "pending")
+    }
+
+@app.put("/api/profile-risk")
+def update_profile_risk(
+    update_data: schemas.ProfileRiskUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Update user profile and risk settings"""
+    data = update_data.dict(exclude_unset=True)
+    
+    # Map full_name to name field in database
+    if 'full_name' in data:
+        current_user.name = data['full_name']
+    
+    if 'email' in data and data['email']:
+        # Check if email is already taken by another user
+        existing = db.query(models.User).filter(
+            models.User.email == data['email'],
+            models.User.id != current_user.id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        current_user.email = data['email']
+    
+    if 'phone_number' in data:
+        current_user.phone_number = data['phone_number']
+    
+    if 'residential_address' in data:
+        current_user.residential_address = data['residential_address']
+    
+    if 'date_of_birth' in data and data['date_of_birth']:
+        from datetime import datetime as dt
+        try:
+            current_user.date_of_birth = dt.strptime(data['date_of_birth'], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    
+    if 'risk_profile' in data and data['risk_profile']:
+        risk_value = data['risk_profile'].lower()
+        if risk_value in ['conservative', 'moderate', 'aggressive']:
+            current_user.risk_profile = risk_value
+    
+    if 'kyc_status' in data and data['kyc_status']:
+        kyc_value = data['kyc_status'].lower()
+        if kyc_value in ['completed', 'pending', 'verified', 'unverified']:
+            # Map completed/pending to verified/unverified for DB enum
+            if kyc_value == 'completed':
+                current_user.kyc_status = 'verified'
+            elif kyc_value == 'pending':
+                current_user.kyc_status = 'unverified'
+            else:
+                current_user.kyc_status = kyc_value
+    
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    
+    return {
+        "id": current_user.id,
+        "full_name": current_user.name,
+        "email": current_user.email,
+        "phone_number": current_user.phone_number,
+        "residential_address": current_user.residential_address,
+        "date_of_birth": current_user.date_of_birth.isoformat() if current_user.date_of_birth else None,
+        "risk_profile": current_user.risk_profile.value if hasattr(current_user.risk_profile, 'value') else current_user.risk_profile,
+        "kyc_status": "completed" if (current_user.kyc_status == "verified" or (hasattr(current_user.kyc_status, 'value') and current_user.kyc_status.value == "verified")) else "pending"
+    }
+
 # --- ASSETS & PORTFOLIO ---
 @app.get("/stock/{symbol}")
 def get_stock_price(symbol: str):
@@ -829,3 +911,725 @@ def delete_goal(goal_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Goal deleted"}
 
+
+# ---------------------------------------------------------
+# PRICE REFRESH TASKS (Background Jobs)
+# ---------------------------------------------------------
+from app.services.tasks import refresh_all_asset_prices, refresh_user_assets, refresh_asset_price
+
+
+@app.post("/api/refresh/all")
+def trigger_full_price_refresh():
+    """
+    Trigger a full price refresh for all assets in the database.
+    This is the same task that runs nightly via Celery Beat.
+    Returns task_id to track progress.
+    """
+    task = refresh_all_asset_prices.delay()
+    return {
+        "message": "Price refresh task started",
+        "task_id": task.id,
+        "status_url": f"/api/refresh/status/{task.id}"
+    }
+
+
+@app.post("/api/refresh/user")
+def trigger_user_price_refresh(current_user: models.User = Depends(get_current_user)):
+    """
+    Trigger price refresh for current user's assets only.
+    Returns task_id to track progress.
+    """
+    task = refresh_user_assets.delay(current_user.id)
+    return {
+        "message": f"Price refresh for user {current_user.id} started",
+        "task_id": task.id,
+        "status_url": f"/api/refresh/status/{task.id}"
+    }
+
+
+@app.post("/api/refresh/asset/{asset_id}")
+def trigger_single_asset_refresh(
+    asset_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Trigger price refresh for a single asset.
+    User must own the asset.
+    """
+    asset = db.query(models.Asset).filter(
+        models.Asset.id == asset_id,
+        models.Asset.owner_id == current_user.id
+    ).first()
+    
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found or not owned by user")
+    
+    task = refresh_asset_price.delay(asset_id)
+    return {
+        "message": f"Price refresh for {asset.symbol} started",
+        "task_id": task.id,
+        "status_url": f"/api/refresh/status/{task.id}"
+    }
+
+
+@app.get("/api/refresh/status/{task_id}")
+def get_refresh_task_status(task_id: str):
+    """
+    Check the status of a price refresh task.
+    Returns task state and result if completed.
+    """
+    result = AsyncResult(task_id, app=celery_app)
+    
+    response = {
+        "task_id": task_id,
+        "state": result.state,
+    }
+    
+    if result.state == 'SUCCESS':
+        response["result"] = result.result
+    elif result.state == 'FAILURE':
+        response["error"] = str(result.result)
+    elif result.state == 'PENDING':
+        response["message"] = "Task is pending execution"
+    elif result.state == 'STARTED':
+        response["message"] = "Task is currently running"
+    
+    return response
+
+
+@app.get("/api/assets/prices")
+def get_assets_with_prices(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Get all user assets with their cached price data.
+    Returns last_price, current_value, and last_price_at for each asset.
+    """
+    assets = db.query(models.Asset).filter(
+        models.Asset.owner_id == current_user.id
+    ).all()
+    
+    return [
+        {
+            "id": asset.id,
+            "symbol": asset.symbol,
+            "company_name": asset.company_name,
+            "quantity": asset.quantity,
+            "buy_price": asset.buy_price,
+            "last_price": asset.last_price,
+            "current_value": asset.current_value,
+            "last_price_at": asset.last_price_at.isoformat() if asset.last_price_at else None
+        }
+        for asset in assets
+    ]
+
+
+# ---------------------------------------------------------
+# SIMULATION LOGIC & CALCULATIONS (Math Engine)
+# ---------------------------------------------------------
+
+def calculate_sip(monthly_investment: float, years: int, annual_rate: float) -> dict:
+    """
+    SIP Calculator - Calculates future value with monthly compounding
+    
+    Formula: FV = P × [(1 + r)^n – 1] / r × (1 + r)
+    Where: P = Monthly investment, r = Monthly rate, n = Total months
+    """
+    monthly_rate = annual_rate / 100 / 12
+    total_months = years * 12
+    
+    total_invested = 0
+    total_value = 0
+    yearly_projections = []
+    
+    for year in range(1, years + 1):
+        for month in range(12):
+            total_invested += monthly_investment
+            total_value += monthly_investment
+            total_value *= (1 + monthly_rate)
+        
+        yearly_projections.append({
+            "year": year,
+            "invested_amount": round(total_invested, 2),
+            "interest_earned": round(total_value - total_invested, 2),
+            "total_value": round(total_value, 2)
+        })
+    
+    return {
+        "total_invested": round(total_invested, 2),
+        "estimated_returns": round(total_value - total_invested, 2),
+        "total_value": round(total_value, 2),
+        "annual_return_rate": annual_rate,
+        "yearly_projections": yearly_projections
+    }
+
+
+def calculate_retirement(
+    current_age: int,
+    retirement_age: int,
+    current_savings: float,
+    monthly_contribution: float,
+    pre_retirement_rate: float,
+    post_retirement_rate: float,
+    inflation_rate: float,
+    monthly_expense: float
+) -> dict:
+    """
+    Retirement Planning Calculator
+    
+    Calculates:
+    1. Corpus at retirement
+    2. Inflation-adjusted expenses
+    3. How long the corpus will last
+    """
+    years_until_retirement = retirement_age - current_age
+    monthly_rate = pre_retirement_rate / 100 / 12
+    
+    # Calculate corpus at retirement
+    corpus = current_savings
+    total_invested = current_savings
+    yearly_projections = []
+    
+    for year in range(1, years_until_retirement + 1):
+        for _ in range(12):
+            corpus += monthly_contribution
+            corpus *= (1 + monthly_rate)
+            total_invested += monthly_contribution
+        
+        yearly_projections.append({
+            "age": current_age + year,
+            "year": year,
+            "invested": round(total_invested, 2),
+            "corpus": round(corpus, 2),
+            "phase": "accumulation"
+        })
+    
+    corpus_at_retirement = corpus
+    
+    # Calculate inflation-adjusted monthly expense at retirement
+    inflation_multiplier = (1 + inflation_rate / 100) ** years_until_retirement
+    inflation_adjusted_expense = monthly_expense * inflation_multiplier
+    
+    # Calculate how long corpus lasts in retirement
+    post_monthly_rate = post_retirement_rate / 100 / 12
+    post_inflation_monthly = inflation_rate / 100 / 12
+    
+    retirement_corpus = corpus_at_retirement
+    age = retirement_age
+    current_expense = inflation_adjusted_expense
+    
+    while retirement_corpus > 0 and age < 120:
+        for month in range(12):
+            retirement_corpus *= (1 + post_monthly_rate)
+            retirement_corpus -= current_expense
+            current_expense *= (1 + post_inflation_monthly)  # Expense grows with inflation
+            
+            if retirement_corpus <= 0:
+                break
+        
+        if retirement_corpus > 0:
+            age += 1
+            yearly_projections.append({
+                "age": age,
+                "year": age - current_age,
+                "corpus": round(max(0, retirement_corpus), 2),
+                "annual_expense": round(current_expense * 12, 2),
+                "phase": "retirement"
+            })
+    
+    # Calculate monthly income from corpus
+    # Using 4% safe withdrawal rate
+    monthly_income = corpus_at_retirement * 0.04 / 12
+    
+    return {
+        "years_until_retirement": years_until_retirement,
+        "corpus_at_retirement": round(corpus_at_retirement, 2),
+        "total_invested": round(total_invested, 2),
+        "total_returns": round(corpus_at_retirement - total_invested, 2),
+        "monthly_income_at_retirement": round(monthly_income, 2),
+        "corpus_lasts_until_age": age,
+        "inflation_adjusted_expense": round(inflation_adjusted_expense, 2),
+        "yearly_projections": yearly_projections
+    }
+
+
+def calculate_loan_payoff(
+    principal: float,
+    annual_rate: float,
+    term_months: int,
+    extra_payment: float = 0
+) -> dict:
+    """
+    Loan Payoff Calculator with amortization schedule
+    
+    Calculates:
+    1. Monthly EMI
+    2. Total interest paid
+    3. Savings from extra payments
+    4. Amortization schedule
+    """
+    monthly_rate = annual_rate / 100 / 12
+    
+    # Calculate standard EMI using formula: EMI = P × r × (1 + r)^n / ((1 + r)^n – 1)
+    if monthly_rate > 0:
+        emi = principal * monthly_rate * ((1 + monthly_rate) ** term_months) / (((1 + monthly_rate) ** term_months) - 1)
+    else:
+        emi = principal / term_months
+    
+    # Standard payoff (without extra payment)
+    standard_total = emi * term_months
+    standard_interest = standard_total - principal
+    
+    # Calculate with extra payment
+    balance = principal
+    total_paid = 0
+    total_interest = 0
+    months_paid = 0
+    amortization = []
+    
+    while balance > 0 and months_paid < term_months * 2:  # Safety limit
+        months_paid += 1
+        interest_payment = balance * monthly_rate
+        principal_payment = min(emi - interest_payment + extra_payment, balance)
+        actual_payment = interest_payment + principal_payment
+        
+        balance -= principal_payment
+        total_paid += actual_payment
+        total_interest += interest_payment
+        
+        # Add to amortization (monthly for first year, then yearly summaries)
+        if months_paid <= 12 or months_paid % 12 == 0:
+            amortization.append({
+                "month": months_paid,
+                "payment": round(actual_payment, 2),
+                "principal": round(principal_payment, 2),
+                "interest": round(interest_payment, 2),
+                "balance": round(max(0, balance), 2)
+            })
+        
+        if balance <= 0:
+            break
+    
+    # Calculate savings
+    interest_saved = standard_interest - total_interest
+    months_saved = term_months - months_paid
+    
+    # Calculate payoff date
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+    payoff_date = datetime.now() + relativedelta(months=months_paid)
+    
+    return {
+        "monthly_payment": round(emi + extra_payment, 2),
+        "total_payment": round(total_paid, 2),
+        "total_interest": round(total_interest, 2),
+        "payoff_months": months_paid,
+        "payoff_date": payoff_date.strftime("%B %Y"),
+        "interest_saved_with_extra": round(max(0, interest_saved), 2),
+        "months_saved_with_extra": max(0, months_saved),
+        "amortization_schedule": amortization
+    }
+
+
+def calculate_goal_projection(
+    target_amount: float,
+    current_savings: float,
+    monthly_contribution: float,
+    annual_rate: float,
+    target_years: int = None
+) -> dict:
+    """
+    Goal-based projection calculator
+    
+    Calculates:
+    1. Projected value over time
+    2. Whether goal is achievable
+    3. Required monthly contribution to meet goal
+    """
+    monthly_rate = annual_rate / 100 / 12
+    
+    # If target_years provided, calculate if achievable
+    if target_years:
+        total_months = target_years * 12
+        
+        # Calculate projected value
+        value = current_savings
+        total_invested = current_savings
+        yearly_projections = []
+        
+        for year in range(1, target_years + 1):
+            for _ in range(12):
+                value += monthly_contribution
+                value *= (1 + monthly_rate)
+                total_invested += monthly_contribution
+            
+            yearly_projections.append({
+                "year": year,
+                "invested_amount": round(total_invested, 2),
+                "interest_earned": round(value - total_invested, 2),
+                "total_value": round(value, 2)
+            })
+        
+        projected_value = value
+        is_achievable = projected_value >= target_amount
+        shortfall_or_surplus = projected_value - target_amount
+        
+        # Calculate required monthly contribution to meet goal
+        if current_savings >= target_amount:
+            required_monthly = 0
+        else:
+            needed = target_amount - current_savings * ((1 + monthly_rate) ** total_months)
+            if monthly_rate > 0:
+                required_monthly = needed * monthly_rate / (((1 + monthly_rate) ** total_months) - 1)
+            else:
+                required_monthly = needed / total_months
+        
+        return {
+            "target_amount": target_amount,
+            "projected_value": round(projected_value, 2),
+            "is_achievable": is_achievable,
+            "shortfall_or_surplus": round(shortfall_or_surplus, 2),
+            "months_to_goal": target_years * 12 if is_achievable else None,
+            "required_monthly_contribution": round(max(0, required_monthly), 2),
+            "yearly_projections": yearly_projections
+        }
+    else:
+        # Calculate months needed to reach goal
+        value = current_savings
+        months = 0
+        yearly_projections = []
+        total_invested = current_savings
+        
+        while value < target_amount and months < 600:  # Max 50 years
+            value += monthly_contribution
+            value *= (1 + monthly_rate)
+            total_invested += monthly_contribution
+            months += 1
+            
+            if months % 12 == 0:
+                yearly_projections.append({
+                    "year": months // 12,
+                    "invested_amount": round(total_invested, 2),
+                    "interest_earned": round(value - total_invested, 2),
+                    "total_value": round(value, 2)
+                })
+        
+        return {
+            "target_amount": target_amount,
+            "projected_value": round(value, 2),
+            "is_achievable": value >= target_amount,
+            "shortfall_or_surplus": round(value - target_amount, 2),
+            "months_to_goal": months if value >= target_amount else None,
+            "required_monthly_contribution": monthly_contribution,
+            "yearly_projections": yearly_projections
+        }
+
+
+# ---------------------------------------------------------
+# SIMULATION API ENDPOINTS
+# ---------------------------------------------------------
+
+@app.post("/api/simulations/sip", response_model=schemas.SimulationResponse)
+def run_sip_simulation(
+    request: schemas.SIPSimulationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Run SIP (Systematic Investment Plan) simulation and save results.
+    
+    Calculates future value based on monthly investments with compound interest.
+    """
+    # Run calculation
+    results = calculate_sip(
+        monthly_investment=request.monthly_investment,
+        years=request.years,
+        annual_rate=request.expected_return_rate
+    )
+    
+    # Prepare assumptions
+    assumptions = {
+        "type": "sip",
+        "monthly_investment": request.monthly_investment,
+        "years": request.years,
+        "expected_return_rate": request.expected_return_rate
+    }
+    
+    # Save to database
+    simulation = models.Simulation(
+        user_id=current_user.id,
+        goal_id=request.goal_id,
+        scenario_name=request.scenario_name,
+        assumptions=assumptions,
+        results=results
+    )
+    db.add(simulation)
+    db.commit()
+    db.refresh(simulation)
+    
+    return simulation
+
+
+@app.post("/api/simulations/retirement", response_model=schemas.SimulationResponse)
+def run_retirement_simulation(
+    request: schemas.RetirementSimulationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Run retirement planning simulation and save results.
+    
+    Calculates corpus at retirement and how long it will last.
+    """
+    results = calculate_retirement(
+        current_age=request.current_age,
+        retirement_age=request.retirement_age,
+        current_savings=request.current_savings,
+        monthly_contribution=request.monthly_contribution,
+        pre_retirement_rate=request.expected_return_rate,
+        post_retirement_rate=request.post_retirement_return_rate,
+        inflation_rate=request.inflation_rate,
+        monthly_expense=request.monthly_expense_at_retirement
+    )
+    
+    assumptions = {
+        "type": "retirement",
+        "current_age": request.current_age,
+        "retirement_age": request.retirement_age,
+        "current_savings": request.current_savings,
+        "monthly_contribution": request.monthly_contribution,
+        "expected_return_rate": request.expected_return_rate,
+        "post_retirement_return_rate": request.post_retirement_return_rate,
+        "inflation_rate": request.inflation_rate,
+        "monthly_expense_at_retirement": request.monthly_expense_at_retirement
+    }
+    
+    simulation = models.Simulation(
+        user_id=current_user.id,
+        goal_id=request.goal_id,
+        scenario_name=request.scenario_name,
+        assumptions=assumptions,
+        results=results
+    )
+    db.add(simulation)
+    db.commit()
+    db.refresh(simulation)
+    
+    return simulation
+
+
+@app.post("/api/simulations/loan", response_model=schemas.SimulationResponse)
+def run_loan_simulation(
+    request: schemas.LoanPayoffSimulationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Run loan payoff simulation and save results.
+    
+    Calculates EMI, total interest, and payoff schedule.
+    """
+    results = calculate_loan_payoff(
+        principal=request.principal,
+        annual_rate=request.annual_interest_rate,
+        term_months=request.loan_term_months,
+        extra_payment=request.extra_monthly_payment
+    )
+    
+    assumptions = {
+        "type": "loan",
+        "principal": request.principal,
+        "annual_interest_rate": request.annual_interest_rate,
+        "loan_term_months": request.loan_term_months,
+        "extra_monthly_payment": request.extra_monthly_payment
+    }
+    
+    simulation = models.Simulation(
+        user_id=current_user.id,
+        goal_id=request.goal_id,
+        scenario_name=request.scenario_name,
+        assumptions=assumptions,
+        results=results
+    )
+    db.add(simulation)
+    db.commit()
+    db.refresh(simulation)
+    
+    return simulation
+
+
+@app.post("/api/simulations/goal", response_model=schemas.SimulationResponse)
+def run_goal_simulation(
+    request: schemas.GoalSimulationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Run goal-based projection simulation and save results.
+    
+    Calculates if a goal is achievable and what's needed to reach it.
+    """
+    results = calculate_goal_projection(
+        target_amount=request.target_amount,
+        current_savings=request.current_savings,
+        monthly_contribution=request.monthly_contribution,
+        annual_rate=request.expected_return_rate,
+        target_years=request.target_years
+    )
+    
+    assumptions = {
+        "type": "goal",
+        "target_amount": request.target_amount,
+        "current_savings": request.current_savings,
+        "monthly_contribution": request.monthly_contribution,
+        "expected_return_rate": request.expected_return_rate,
+        "target_years": request.target_years
+    }
+    
+    simulation = models.Simulation(
+        user_id=current_user.id,
+        goal_id=request.goal_id,
+        scenario_name=request.scenario_name,
+        assumptions=assumptions,
+        results=results
+    )
+    db.add(simulation)
+    db.commit()
+    db.refresh(simulation)
+    
+    return simulation
+
+
+@app.post("/api/simulations/calculate/sip")
+def calculate_sip_only(request: schemas.SIPSimulationRequest):
+    """
+    Calculate SIP without saving to database.
+    Useful for quick calculations and previews.
+    """
+    return calculate_sip(
+        monthly_investment=request.monthly_investment,
+        years=request.years,
+        annual_rate=request.expected_return_rate
+    )
+
+
+@app.post("/api/simulations/calculate/retirement")
+def calculate_retirement_only(request: schemas.RetirementSimulationRequest):
+    """
+    Calculate retirement planning without saving to database.
+    """
+    return calculate_retirement(
+        current_age=request.current_age,
+        retirement_age=request.retirement_age,
+        current_savings=request.current_savings,
+        monthly_contribution=request.monthly_contribution,
+        pre_retirement_rate=request.expected_return_rate,
+        post_retirement_rate=request.post_retirement_return_rate,
+        inflation_rate=request.inflation_rate,
+        monthly_expense=request.monthly_expense_at_retirement
+    )
+
+
+@app.post("/api/simulations/calculate/loan")
+def calculate_loan_only(request: schemas.LoanPayoffSimulationRequest):
+    """
+    Calculate loan payoff without saving to database.
+    """
+    return calculate_loan_payoff(
+        principal=request.principal,
+        annual_rate=request.annual_interest_rate,
+        term_months=request.loan_term_months,
+        extra_payment=request.extra_monthly_payment
+    )
+
+
+@app.post("/api/simulations/calculate/goal")
+def calculate_goal_only(request: schemas.GoalSimulationRequest):
+    """
+    Calculate goal projection without saving to database.
+    """
+    return calculate_goal_projection(
+        target_amount=request.target_amount,
+        current_savings=request.current_savings,
+        monthly_contribution=request.monthly_contribution,
+        annual_rate=request.expected_return_rate,
+        target_years=request.target_years
+    )
+
+
+@app.get("/api/simulations", response_model=schemas.PaginatedSimulationsResponse)
+def get_user_simulations(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    scenario_type: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Get paginated list of user's saved simulations.
+    Optionally filter by scenario type (sip, retirement, loan, goal).
+    """
+    query = db.query(models.Simulation).filter(
+        models.Simulation.user_id == current_user.id
+    )
+    
+    if scenario_type:
+        # Filter by type stored in assumptions JSON
+        query = query.filter(
+            models.Simulation.assumptions["type"].astext == scenario_type
+        )
+    
+    total = query.count()
+    total_pages = (total + limit - 1) // limit
+    
+    simulations = query.order_by(
+        models.Simulation.created_at.desc()
+    ).offset((page - 1) * limit).limit(limit).all()
+    
+    return {
+        "data": simulations,
+        "total": total,
+        "current_page": page,
+        "total_pages": total_pages
+    }
+
+
+@app.get("/api/simulations/{simulation_id}", response_model=schemas.SimulationResponse)
+def get_simulation(
+    simulation_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get a specific simulation by ID."""
+    simulation = db.query(models.Simulation).filter(
+        models.Simulation.id == simulation_id,
+        models.Simulation.user_id == current_user.id
+    ).first()
+    
+    if not simulation:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+    
+    return simulation
+
+
+@app.delete("/api/simulations/{simulation_id}")
+def delete_simulation(
+    simulation_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Delete a saved simulation."""
+    simulation = db.query(models.Simulation).filter(
+        models.Simulation.id == simulation_id,
+        models.Simulation.user_id == current_user.id
+    ).first()
+    
+    if not simulation:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+    
+    db.delete(simulation)
+    db.commit()
+    
+    return {"message": "Simulation deleted successfully"}
