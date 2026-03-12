@@ -177,8 +177,10 @@ personal-wealth-management/
 |--------|----------|-------------|
 | GET | `/portfolio` | Get user portfolio |
 | GET | `/portfolio/overview` | Get portfolio summary |
+| **POST | `/api/market-refresh`** | **Refresh all asset prices from live market data (BE Dev 1)** |
 | POST | `/assets` | Add new asset |
 | POST | `/transactions` | Create transaction |
+
 
 ### Goals
 | Method | Endpoint | Description |
@@ -201,6 +203,7 @@ personal-wealth-management/
 ### Background Tasks (Milestone 3)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| **POST | `/api/market-refresh`** | **✅ LIVE: Updates assets.current_value, last_price, last_price_at** |
 | POST | `/api/refresh/all` | Refresh all asset prices |
 | POST | `/api/refresh/user` | Refresh user's assets |
 | GET | `/api/refresh/status/{task_id}` | Check task status |
@@ -251,6 +254,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # Redis (for background tasks)
 REDIS_URL=redis://localhost:6379/0
+
+# Alpha Vantage (API Key)
+ALPHA_VANTAGE_KEY=9D7A2V8CVVLJV4WT
 ```
 
 ---
