@@ -1,167 +1,118 @@
-import { useEffect, useState } from "react";
-import api from "../services/api";
+import React from "react";
 
-function Profile() {
-  const [formData, setFormData] = useState(null);
-  const [loading, setLoading] = useState(false);
+const Profile = () => {
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
-    try {
-      const res = await api.get("/users/me");
-      setFormData(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSave = async () => {
-    try {
-      setLoading(true);
-
-      await api.put("/users/update", {
-        full_name: formData.full_name,
-        phone_number: formData.phone_number,
-        address: formData.address,
-        risk_profile: formData.risk_profile,
-      });
-
-      alert("Profile Updated Successfully");
-    } catch (err) {
-      console.error(err.response?.data);
-      alert("Error updating profile");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!formData) return <div className="text-white p-10">Loading...</div>;
+  const userHistory = [
+    { action: "Account Created", date: "10 Jan 2024" },
+    { action: "KYC Submitted", date: "12 Jan 2024" },
+    { action: "First Investment", date: "15 Feb 2024" },
+    { action: "Goal Created", date: "10 Mar 2024" },
+  ];
 
   return (
-    <div className="space-y-8 text-white">
+    <div className="min-h-screen bg-[#020617] text-white p-8">
 
-      <h1 className="text-3xl font-bold bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+      <h2 className="text-3xl font-bold text-[#E5E7EB] mb-8">
         Profile & Risk Management
-      </h1>
+      </h2>
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-        {/* User Info Card */}
-        <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-lg">
+        {/* USER INFO */}
 
-          <h2 className="text-xl font-semibold mb-6">User Profile Details</h2>
+        <div className="bg-[#0B1E3B] p-6 rounded-xl shadow-md">
 
-          <div className="space-y-5">
+          <h3 className="text-xl font-semibold text-[#E5E7EB] mb-4">
+            User Information
+          </h3>
 
-            <input
-              type="text"
-              value={formData.full_name}
-              disabled
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-slate-400"
-            />
-
-            <input
-              type="email"
-              value={formData.email}
-              disabled
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-slate-400"
-            />
-
-            <input
-              type="text"
-              name="phone_number"
-              value={formData.phone_number || ""}
-              onChange={handleChange}
-              placeholder="Phone Number"
-              className="w-full bg-transparent border border-slate-700 rounded-xl p-3 focus:ring-2 focus:ring-purple-500 outline-none"
-            />
-
-            <input
-              type="text"
-              name="address"
-              value={formData.address || ""}
-              onChange={handleChange}
-              placeholder="Address"
-              className="w-full bg-transparent border border-slate-700 rounded-xl p-3 focus:ring-2 focus:ring-purple-500 outline-none"
-            />
-
-          </div>
+          <p className="text-[#CBD5E1]">Name: Thambi Durai</p>
+          <p className="text-[#CBD5E1]">Email: thambi@example.com</p>
+          <p className="text-[#CBD5E1]">Phone: +91 9876543210</p>
+          <p className="text-[#CBD5E1]">Location: Chennai</p>
 
         </div>
 
-        {/* Risk Profile Card */}
-        <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl border border-slate-700 shadow-lg">
 
-          <h2 className="text-xl font-semibold mb-6">Risk Profile Selection</h2>
+        {/* RISK PROFILE */}
 
-          <div className="space-y-4">
+        <div className="bg-[#0B1E3B] p-6 rounded-xl shadow-md">
 
-            {["conservative", "moderate", "aggressive"].map((risk) => (
-              <label
-                key={risk}
-                className={`block border rounded-xl p-4 cursor-pointer transition ${
-                  formData.risk_profile === risk
-                    ? "border-purple-500 bg-slate-800"
-                    : "border-slate-700 hover:border-purple-400"
-                }`}
+          <h3 className="text-xl font-semibold text-[#E5E7EB] mb-4">
+            Risk Profile
+          </h3>
+
+          <p className="text-[#CBD5E1] mb-3">
+            Moderate Risk Investor
+          </p>
+
+          <div className="w-full bg-gray-700 rounded-full h-3">
+
+            <div className="bg-[#C084FC] h-3 rounded-full w-2/3"></div>
+
+          </div>
+
+          <p className="text-sm text-[#CBD5E1] mt-2">
+            Risk Level: 65%
+          </p>
+
+        </div>
+
+
+        {/* KYC STATUS */}
+
+        <div className="bg-[#0B1E3B] p-6 rounded-xl shadow-md">
+
+          <h3 className="text-xl font-semibold text-[#E5E7EB] mb-4">
+            KYC Status
+          </h3>
+
+          <p className="text-[#C084FC] font-semibold text-lg">
+            Verified
+          </p>
+
+          <p className="text-[#CBD5E1] text-sm mt-2">
+            Your identity verification is completed.
+          </p>
+
+        </div>
+
+
+        {/* USER HISTORY */}
+
+        <div className="bg-[#0B1E3B] p-6 rounded-xl shadow-md">
+
+          <h3 className="text-xl font-semibold text-[#E5E7EB] mb-4">
+            User History
+          </h3>
+
+          <ul className="space-y-3 text-[#CBD5E1]">
+
+            {userHistory.map((item, index) => (
+
+              <li
+                key={index}
+                className="flex justify-between border-b border-gray-700 pb-2"
               >
-                <input
-                  type="radio"
-                  name="risk_profile"
-                  value={risk}
-                  checked={formData.risk_profile === risk}
-                  onChange={handleChange}
-                  className="mr-3 accent-purple-500"
-                />
-                {risk.charAt(0).toUpperCase() + risk.slice(1)}
-              </label>
+
+                <span>{item.action}</span>
+
+                <span className="text-gray-400">
+                  {item.date}
+                </span>
+
+              </li>
+
             ))}
 
-          </div>
+          </ul>
 
         </div>
 
-      </div>
-
-      {/* KYC Card */}
-      <div className="bg-slate-900/80 backdrop-blur-xl p-6 rounded-2xl border border-slate-700 flex justify-between items-center">
-
-        <div>
-          <h3 className="text-lg font-semibold">KYC Status</h3>
-          <p className="text-slate-400">
-            {formData.kyc_status ? "Completed" : "Pending"}
-          </p>
-        </div>
-
-        <button className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 transition">
-          Update KYC
-        </button>
-
-      </div>
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={loading}
-          className="px-8 py-3 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition font-semibold"
-        >
-          {loading ? "Saving..." : "Save Changes"}
-        </button>
       </div>
 
     </div>
   );
-}
+};
 
 export default Profile;
