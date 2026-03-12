@@ -3,6 +3,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query
+from update_prices import update_prices 
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -12,7 +13,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import requests
 from datetime import date
-
 # --- FIXED INTERNAL MODULE IMPORTS ---
 import models
 import schemas
@@ -1633,3 +1633,8 @@ def delete_simulation(
     db.commit()
     
     return {"message": "Simulation deleted successfully"}
+
+@app.post("/api/market-refresh")
+def refresh_prices():
+    update_prices()
+    return {"status": "success", "message": "Live prices updated"}
