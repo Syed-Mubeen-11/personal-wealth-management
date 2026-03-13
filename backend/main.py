@@ -3,7 +3,6 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query
-from update_prices import update_prices 
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -1636,5 +1635,4 @@ def delete_simulation(
 
 @app.post("/api/market-refresh")
 def refresh_prices():
-    update_prices()
-    return {"status": "success", "message": "Live prices updated"}
+    return {"status": "success", "message": "Run: python update_prices.py (Alpha Vantage)"}
