@@ -130,6 +130,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 def root():
     return {"message": "Wealth Backend Running!"}
 
+
 @app.post("/register")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(models.User).filter(models.User.email == user.email).first()
@@ -157,6 +158,7 @@ def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 # --- TEAMMATE'S FEATURE: GITHUB PR FETCH ---
 @app.get("/api/github/prs")
