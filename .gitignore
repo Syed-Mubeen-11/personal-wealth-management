@@ -1,80 +1,111 @@
 <<<<<<< HEAD
-# Node
+# ==============================================
+# Personal Wealth Management - Git Ignore
+# ==============================================
+
+# -----------------------------------------
+# Node.js / JavaScript
+# -----------------------------------------
 node_modules/
-npm-debug.log
-yarn-error.log
-pnpm-debug.log
-
-# Vite / build
-dist/
-build/
-.vite/
-
-# Env
-.env
-.env.*.local
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDEs
-.vscode/
-.idea/
-
-# Logs
-logs/
-*.log
-
-# Tests / coverage
-coverage/
-
-# Misc
-*.tgz
-*.cache
-
-# Frontend specific
-frontend/node_modules/
-frontend/.env
-frontend/dist/
-
-# Backend specific
-backend/node_modules/
-backend/.env
-backend/dist/
-__pycache__/
-*.py[cod]
-*$py.class
-*.db
-*.sqlite3
-
-# Lock files (optional - uncomment to ignore)
-# package-lock.json
-# pnpm-lock.yaml
-# yarn.lock
-=======
-# Logs
-logs
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+.npm
+.yarn
 
-node_modules
-dist
-dist-ssr
+# -----------------------------------------
+# Build outputs
+# -----------------------------------------
+dist/
+dist-ssr/
+build/
+.vite/
 *.local
 
-# Editor directories and files
+# -----------------------------------------
+# Environment files (IMPORTANT - Keep secrets out!)
+# -----------------------------------------
+.env
+.env.local
+.env.*.local
+*.env
+
+# -----------------------------------------
+# Python
+# -----------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.mypy_cache/
+.pytest_cache/
+
+# -----------------------------------------
+# Database files
+# -----------------------------------------
+*.db
+*.sqlite3
+*.sqlite
+
+# -----------------------------------------
+# IDE / Editor
+# -----------------------------------------
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+!.vscode/settings.json
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
->>>>>>> bf3d4034d67f98e5d486f6469e73cf7487de712b
+*.swp
+*.swo
+*~
+
+# -----------------------------------------
+# OS files
+# -----------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -----------------------------------------
+# Logs
+# -----------------------------------------
+logs/
+*.log
+
+# -----------------------------------------
+# Test / Coverage
+# -----------------------------------------
+coverage/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# -----------------------------------------
+# Misc
+# -----------------------------------------
+*.tgz
+*.cache
+.cache/
+*.bak
+*.tmp
+*.temp

@@ -18,7 +18,6 @@ const Goals = () => {
   const remainingAmount = targetAmount - achievedAmount;
   const targetDate = "31 Dec 2026";
 
-  // Daily Contribution
   const dailyData = [
     { name: "Mon", amount: 2000 },
     { name: "Tue", amount: 2500 },
@@ -29,7 +28,6 @@ const Goals = () => {
     { name: "Sun", amount: 1500 },
   ];
 
-  // Weekly Contribution
   const weeklyData = [
     { name: "Week 1", amount: 15000 },
     { name: "Week 2", amount: 20000 },
@@ -37,7 +35,6 @@ const Goals = () => {
     { name: "Week 4", amount: 25000 },
   ];
 
-  // Monthly Contribution (12 Months)
   const monthlyData = [
     { name: "Jan", amount: 10000 },
     { name: "Feb", amount: 15000 },
@@ -53,7 +50,6 @@ const Goals = () => {
     { name: "Dec", amount: 35000 },
   ];
 
-  // Yearly Contribution
   const yearlyData = [
     { name: "2022", amount: 120000 },
     { name: "2023", amount: 180000 },
@@ -62,102 +58,165 @@ const Goals = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-indigo-950 text-white p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#020617] text-white p-8">
 
-      {/* Glow Background */}
-      <div className="absolute top-20 left-20 w-72 h-72 bg-purple-600 opacity-20 blur-3xl rounded-full"></div>
-      <div className="absolute bottom-20 right-20 w-72 h-72 bg-cyan-500 opacity-20 blur-3xl rounded-full"></div>
+      {/* HEADER */}
 
-      <div className="relative z-10">
+      <div className="bg-[#0B1E3B]/60 backdrop-blur-md p-4 rounded-xl mb-10 flex justify-between items-center">
 
-        <h2 className="text-3xl font-bold mb-6">Goals Dashboard 🎯</h2>
+        <h2 className="text-2xl font-semibold text-[#E5E7EB]">
+          Goals Dashboard
+        </h2>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+        <p className="text-gray-400">
+          Progress
+        </p>
 
-          <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg">
-            <p className="text-gray-400 text-sm">Target Amount</p>
-            <h3 className="text-2xl font-bold mt-2">₹{targetAmount}</h3>
-          </div>
+      </div>
 
-          <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg">
-            <p className="text-gray-400 text-sm">Achieved</p>
-            <h3 className="text-2xl font-bold mt-2">₹{achievedAmount}</h3>
-          </div>
 
-          <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg">
-            <p className="text-gray-400 text-sm">Remaining</p>
-            <h3 className="text-2xl font-bold mt-2 text-red-400">₹{remainingAmount}</h3>
-          </div>
+      {/* SUMMARY CARDS */}
 
-          <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg">
-            <p className="text-gray-400 text-sm">Target Date</p>
-            <h3 className="text-xl font-bold mt-2 text-green-400">{targetDate}</h3>
-          </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+
+        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition">
+
+          <p className="text-[#CBD5E1]">
+            Target Amount
+          </p>
+
+          <h3 className="text-3xl font-bold mt-2 text-[#C084FC]">
+            ₹{targetAmount}
+          </h3>
 
         </div>
 
-        {/* Daily Chart */}
-        <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg mb-10">
-          <h3 className="text-lg font-semibold mb-4">Daily Contribution</h3>
+        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition">
 
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={dailyData}>
-              <CartesianGrid stroke="#444" strokeDasharray="3 3" />
-              <XAxis dataKey="name" stroke="#ccc" />
-              <YAxis stroke="#ccc" />
-              <Tooltip />
-              <Line type="monotone" dataKey="amount" stroke="#22c55e" strokeWidth={3} />
-            </LineChart>
-          </ResponsiveContainer>
+          <p className="text-[#CBD5E1]">
+            Achieved
+          </p>
+
+          <h3 className="text-3xl font-bold mt-2 text-[#F472B6]">
+            ₹{achievedAmount}
+          </h3>
+
         </div>
 
-        {/* Weekly Chart */}
-        <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg mb-10">
-          <h3 className="text-lg font-semibold mb-4">Weekly Contribution</h3>
+        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition">
 
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={weeklyData}>
-              <CartesianGrid stroke="#444" strokeDasharray="3 3" />
-              <XAxis dataKey="name" stroke="#ccc" />
-              <YAxis stroke="#ccc" />
-              <Tooltip />
-              <Bar dataKey="amount" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
+          <p className="text-[#CBD5E1]">
+            Remaining
+          </p>
+
+          <h3 className="text-3xl font-bold mt-2 text-[#60A5FA]">
+            ₹{remainingAmount}
+          </h3>
+
         </div>
 
-        {/* Monthly Chart */}
-        <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg mb-10">
-          <h3 className="text-lg font-semibold mb-4">Monthly Contribution</h3>
+        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition">
 
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyData}>
-              <CartesianGrid stroke="#444" strokeDasharray="3 3" />
-              <XAxis dataKey="name" stroke="#ccc" />
-              <YAxis stroke="#ccc" />
-              <Tooltip />
-              <Bar dataKey="amount" fill="#8B5CF6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+          <p className="text-[#CBD5E1]">
+            Target Date
+          </p>
 
-        {/* Yearly Chart */}
-        <div className="bg-white/5 backdrop-blur-lg p-6 rounded-2xl border border-white/10 shadow-lg">
-          <h3 className="text-lg font-semibold mb-4">Yearly Contribution</h3>
+          <h3 className="text-3xl font-bold mt-2 text-[#C084FC]">
+            {targetDate}
+          </h3>
 
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={yearlyData}>
-              <CartesianGrid stroke="#444" strokeDasharray="3 3" />
-              <XAxis dataKey="name" stroke="#ccc" />
-              <YAxis stroke="#ccc" />
-              <Tooltip />
-              <Line type="monotone" dataKey="amount" stroke="#f59e0b" strokeWidth={3} />
-            </LineChart>
-          </ResponsiveContainer>
         </div>
 
       </div>
+
+
+
+      {/* DAILY CHART */}
+
+      <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg mb-10">
+
+        <h3 className="text-lg font-semibold mb-4 text-[#E5E7EB]">
+          Daily Contribution
+        </h3>
+
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={dailyData}>
+            <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" />
+            <XAxis dataKey="name" stroke="#CBD5E1" />
+            <YAxis stroke="#CBD5E1" />
+            <Tooltip />
+            <Line type="monotone" dataKey="amount" stroke="#C084FC" strokeWidth={3} />
+          </LineChart>
+        </ResponsiveContainer>
+
+      </div>
+
+
+
+      {/* WEEKLY CHART */}
+
+      <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg mb-10">
+
+        <h3 className="text-lg font-semibold mb-4 text-[#E5E7EB]">
+          Weekly Contribution
+        </h3>
+
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={weeklyData}>
+            <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" />
+            <XAxis dataKey="name" stroke="#CBD5E1" />
+            <YAxis stroke="#CBD5E1" />
+            <Tooltip />
+            <Bar dataKey="amount" fill="#F472B6" />
+          </BarChart>
+        </ResponsiveContainer>
+
+      </div>
+
+
+
+      {/* MONTHLY CHART */}
+
+      <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg mb-10">
+
+        <h3 className="text-lg font-semibold mb-4 text-[#E5E7EB]">
+          Monthly Contribution
+        </h3>
+
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={monthlyData}>
+            <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" />
+            <XAxis dataKey="name" stroke="#CBD5E1" />
+            <YAxis stroke="#CBD5E1" />
+            <Tooltip />
+            <Bar dataKey="amount" fill="#C084FC" />
+          </BarChart>
+        </ResponsiveContainer>
+
+      </div>
+
+
+
+      {/* YEARLY CHART */}
+
+      <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg">
+
+        <h3 className="text-lg font-semibold mb-4 text-[#E5E7EB]">
+          Yearly Contribution
+        </h3>
+
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={yearlyData}>
+            <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" />
+            <XAxis dataKey="name" stroke="#CBD5E1" />
+            <YAxis stroke="#CBD5E1" />
+            <Tooltip />
+            <Line type="monotone" dataKey="amount" stroke="#60A5FA" strokeWidth={3} />
+          </LineChart>
+        </ResponsiveContainer>
+
+      </div>
+
     </div>
   );
 };

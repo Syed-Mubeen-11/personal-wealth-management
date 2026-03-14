@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
 import api from '../api';
 import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { jsPDF } from 'jspdf';
+import { 
+    Chart as ChartJS, 
+    CategoryScale, 
+    LinearScale, 
+    PointElement, 
+    LineElement, 
+    Title, 
+    Tooltip, 
+    Legend,
+    Filler 
+} from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 function Simulator() {
 
@@ -267,5 +278,6 @@ function Simulator() {
     );
 
 }
+
 
 export default Simulator;
