@@ -55,3 +55,8 @@ export const logout = () => {
   // Use replace to prevent back-button navigation to protected pages
   window.location.replace('/login');
 };
+
+export const getMe = async () => {
+  const response = await API.get('/me');
+  return response.data;
+};

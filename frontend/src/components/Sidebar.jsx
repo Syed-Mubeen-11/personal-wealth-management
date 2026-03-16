@@ -20,6 +20,7 @@ const Sidebar = () => {
     { name: 'Investments', path: '/investments', icon: '🏦' },
     { name: 'Analytics', path: '/analytics', icon: '📈' },
     { name: 'Trade History', path: '/transactions', icon: '📜' },
+    { name: 'Profile', path: '/profile', icon: '👤' },
   ];
 
   return (
