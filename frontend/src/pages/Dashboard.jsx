@@ -1,204 +1,100 @@
-import React from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from "recharts";
+import { useEffect, useState } from "react";
+import api from "../services/api";
 
-const Dashboard = () => {
+function Dashboard() {
+  // FE Dev 1: State for live data, loading, and timestamps
+  const [summary, setSummary] = useState({
+    totalPortfolio: 0,
+    activeGoals: 0,
+    riskProfile: "Loading...",
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
-  const lineData = [
-    { name: "Jan", value: 100000 },
-    { name: "Feb", value: 140000 },
-    { name: "Mar", value: 130000 },
-    { name: "Apr", value: 170000 },
-    { name: "May", value: 190000 },
-    { name: "Jun", value: 210000 },
-  ];
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
-  const pieData = [
-    { name: "Stocks", value: 40 },
-    { name: "Crypto", value: 20 },
-    { name: "Savings", value: 25 },
-    { name: "Gold", value: 15 },
-  ];
-
-  const COLORS = ["#C084FC", "#06B6D4", "#10B981", "#F97316"];
+  const fetchDashboardData = async () => {
+    // FE Dev 1: Set loading to true while fetching live prices
+    setIsLoading(true);
+    try {
+      // Assuming a dashboard summary endpoint exists
+      const res = await api.get("/dashboard/summary");
+      setSummary({
+        totalPortfolio: res.data.total_value || 0,
+        activeGoals: res.data.goals_count || 0,
+        riskProfile: res.data.risk_level || "Calculating...",
+      });
+      // FE Dev 1: Setting the timestamp from the market sync
+      setLastUpdated(res.data.last_sync_at || new Date().toISOString());
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    } finally {
+      // FE Dev 1: Disable loading after data is received
+      setIsLoading(false);
+    }
+  };
 
   return (
-
-    <div className="min-h-screen bg-[#020617] text-white p-8">
-
-      {/* HEADER */}
-
-      <div className="bg-[#0B1E3B]/60 backdrop-blur-md p-4 rounded-xl mb-10 flex justify-between items-center">
-
-        <h2 className="text-2xl font-semibold text-[#E5E7EB]">
-          Dashboard Overview
-        </h2>
-
-        <p className="text-gray-400">
-          Profile
+    <div className="space-y-6">
+      {/* FE Dev 1: Header with Live Indicator and Last Updated Timestamp (Requirement p. 4) */}
+      <div className="flex justify-between items-center px-2">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+          </span>
+          <h2 className="text-white font-medium">Market Live</h2>
+        </div>
+        
+        {/* Requirement: Add Last Updated timestamps so users know how fresh data is */}
+        <p className="text-xs text-slate-500">
+          {lastUpdated 
+            ? `System Sync: ${new Date(lastUpdated).toLocaleTimeString()}` 
+            : "System Sync: Syncing..."}
         </p>
-
       </div>
 
-
-      {/* SUMMARY CARDS */}
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-
-        {/* Portfolio */}
-
-        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition duration-300">
-
-          <p className="text-[#CBD5E1]">
-            Total Portfolio
-          </p>
-
-          <h3 className="text-3xl font-bold mt-2 text-[#C084FC]">
-            ₹ 2,50,000
-          </h3>
-
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Portfolio Card - Requirement: Handle loading states */}
+        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+          <h3 className="text-slate-400">Total Portfolio</h3>
+          {isLoading ? (
+            <div className="h-8 w-24 bg-slate-800 animate-pulse mt-2 rounded"></div>
+          ) : (
+            <p className="text-2xl font-bold mt-2 text-purple-400">
+              ₹ {summary.totalPortfolio.toLocaleString('en-IN')}
+            </p>
+          )}
         </div>
 
-
-        {/* Goals */}
-
-        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition duration-300">
-
-          <p className="text-[#CBD5E1]">
-            Active Goals
-          </p>
-
-          <h3 className="text-3xl font-bold mt-2 text-[#F472B6]">
-            4
-          </h3>
-
+        {/* Active Goals Card */}
+        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+          <h3 className="text-slate-400">Active Goals</h3>
+          {isLoading ? (
+            <div className="h-8 w-8 bg-slate-800 animate-pulse mt-2 rounded"></div>
+          ) : (
+            <p className="text-2xl font-bold mt-2 text-pink-400">
+              {summary.activeGoals}
+            </p>
+          )}
         </div>
 
-
-        {/* Investments */}
-
-        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition duration-300">
-
-          <p className="text-[#CBD5E1]">
-            Investments
-          </p>
-
-          <h3 className="text-3xl font-bold mt-2 text-[#C084FC]">
-            ₹ 80,000
-          </h3>
-
+        {/* Risk Profile Card */}
+        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+          <h3 className="text-slate-400">Risk Profile</h3>
+          {isLoading ? (
+            <div className="h-8 w-20 bg-slate-800 animate-pulse mt-2 rounded"></div>
+          ) : (
+            <p className="text-2xl font-bold mt-2 text-indigo-400">
+              {summary.riskProfile}
+            </p>
+          )}
         </div>
-
-
-        {/* Risk */}
-
-        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition duration-300">
-
-          <p className="text-[#CBD5E1]">
-            Risk Profile
-          </p>
-
-          <h3 className="text-3xl font-bold mt-2 text-[#60A5FA]">
-            Moderate
-          </h3>
-
-        </div>
-
       </div>
-
-
-
-      {/* CHARTS */}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* Portfolio Growth */}
-
-        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition duration-300">
-
-          <h3 className="text-lg font-semibold mb-4 text-[#E5E7EB]">
-            Portfolio Growth
-          </h3>
-
-          <ResponsiveContainer width="100%" height={250}>
-
-            <LineChart data={lineData}>
-
-              <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" />
-
-              <XAxis dataKey="name" stroke="#CBD5E1" />
-
-              <YAxis stroke="#CBD5E1" />
-
-              <Tooltip />
-
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#C084FC"
-                strokeWidth={3}
-              />
-
-            </LineChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-
-
-        {/* Asset Allocation */}
-
-        <div className="bg-[#0B1E3B] p-6 rounded-2xl shadow-lg hover:scale-105 transition duration-300">
-
-          <h3 className="text-lg font-semibold mb-4 text-[#E5E7EB]">
-            Asset Allocation
-          </h3>
-
-          <ResponsiveContainer width="100%" height={250}>
-
-            <PieChart>
-
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={90}
-                label
-              >
-
-                {pieData.map((entry, index) => (
-                  <Cell key={index} fill={COLORS[index]} />
-                ))}
-
-              </Pie>
-
-              <Legend />
-
-              <Tooltip />
-
-            </PieChart>
-
-          </ResponsiveContainer>
-
-        </div>
-
-      </div>
-
     </div>
-
   );
-};
+}
 
 export default Dashboard;

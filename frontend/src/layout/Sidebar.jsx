@@ -30,7 +30,7 @@ function Sidebar() {
         </Link>
 
         <Link to="/portfolio" className="block hover:text-purple-400 transition">
-          Portfolio & Transection
+          Portfolio & Transaction
         </Link>
 
 
