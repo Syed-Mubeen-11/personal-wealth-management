@@ -109,6 +109,13 @@ function Portfolio() {
     };
 
     const buyAsset = async () => {
+        const token = localStorage.getItem('jwt');
+        if (!token) {
+            alert("You must be logged in to buy assets. Please log in again.");
+            window.location.href = '/login';
+            return;
+        }
+        
         const qty = parseFloat(quantity);
         const amount = qty * priceData.price;
         const payload = {
@@ -118,6 +125,8 @@ function Portfolio() {
             amount: parseFloat(amount.toFixed(2))
         };
         console.log("Sending buy request with payload:", payload);
+        console.log("Using token:", token ? token.substring(0, 20) + "..." : "NO TOKEN");
+        
         try {
             const response = await api.post('/transactions', payload);
             console.log("Buy success:", response.data);
@@ -133,7 +142,7 @@ function Portfolio() {
             console.error("Buy error details:", err);
             console.error("Error response:", err.response);
             console.error("Error config:", err.config);
-            alert("Failed to buy: " + (err.response?.data?.detail || err.message));
+            alert(`Failed to buy: ${err.response?.data?.detail || err.message}`);
         }
     };
 

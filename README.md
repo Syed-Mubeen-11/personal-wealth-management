@@ -1,385 +1,307 @@
 # Personalized Wealth Management & Goal Tracker
 
-## Beginner-Friendly Intern Starter Guide
+## Quick Start Guide for Team Members
 
-Welcome to the project!
-
-This guide is written for interns who may have:
-- Zero finance knowledge
-- Zero full-stack experience
-- Never worked with React or FastAPI before
-
-Everything is explained in simple language.
+This guide helps you set up and run the project on your local machine.
 
 ---
 
-# 1. What Is This Project?
+## Prerequisites
 
-This is a web application where users can:
+Make sure you have the following installed:
 
-- Set financial goals (retirement, home, education, etc.)
-- Invest in assets (stocks, ETFs, mutual funds)
-- Track investment growth
-- See live market prices
-- Run simulations (what if I invest more?)
-- Get portfolio recommendations
+| Software | Version | Download Link |
+|----------|---------|---------------|
+| Node.js | 18+ | https://nodejs.org |
+| Python | 3.10+ | https://python.org |
+| PostgreSQL | 13+ | https://postgresql.org |
+| Redis | 6+ | https://redis.io |
+| Git | Latest | https://git-scm.com |
 
-In simple terms:
-
-User -> Website -> Backend -> Database -> Results shown on screen
-
----
-
-# 2. Tech Stack (What We Are Using)
-
-Frontend:
-- React.js
-- Tailwind CSS
-
-Backend:
-- FastAPI (Python)
-
-Database:
-- PostgreSQL
-
-Authentication:
-- JWT (secure login tokens)
-
-Background Tasks:
-- Celery + Redis
-
-Market Data:
-- Alpha Vantage or Yahoo Finance APIs
+### Verify Installation
+```bash
+node -v
+npm -v
+python --version
+git --version
+```
 
 ---
 
-# 3. Required Software (Install First)
+## 🚀 Quick Setup (5 Minutes)
 
-Install these before starting:
-
-1. Node.js  
-   Download: https://nodejs.org  
-   Check:
-   node -v
-   npm -v
-
-2. Python 3.10+  
-   Download: https://python.org  
-   Check:
-   python --version
-
-3. PostgreSQL  
-   Download: https://postgresql.org  
-   Remember your username and password.
-
-4. Redis  
-   Download: https://redis.io/download  
-
-5. Git  
-   Download: https://git-scm.com  
-   Check:
-   git --version
-
----
-
-# 4. Clone the Project
-
+### Step 1: Clone the Repository
+```bash
 git clone <repository-url>
-cd wealth-management-app
+cd personal-wealth-management
+```
 
-Project structure should look like:
-
-wealth-management-app/
-    backend/
-    frontend/
-
----
-
-# 5. Backend Setup (FastAPI)
-
-Go to backend folder:
-
+### Step 2: Backend Setup
+```bash
+# Navigate to backend
 cd backend
 
----
-
-## Step 1: Create Virtual Environment
-
+# Create virtual environment
 python -m venv venv
 
-Activate:
-
-Windows:
+# Activate virtual environment
+# Windows:
 venv\Scripts\activate
-
-Mac/Linux:
+# Mac/Linux:
 source venv/bin/activate
 
----
-
-## Step 2: Install Dependencies
-
-If requirements.txt exists:
-
+# Install dependencies
 pip install -r requirements.txt
 
-If not:
+# Copy environment file and edit with your credentials
+cp .env.example .env
+# Edit .env with your PostgreSQL password and settings
+```
 
-pip install fastapi uvicorn sqlalchemy psycopg2-binary python-jose passlib[bcrypt] python-dotenv celery redis
-
----
-
-## Step 3: Create Database
-
-Open PostgreSQL:
-
+### Step 3: Database Setup
+```bash
+# Open PostgreSQL and create database
 psql -U postgres
-
-Create database:
-
 CREATE DATABASE wealth_db;
-
-Exit:
-
 \q
 
+# Run database migrations (from backend folder)
+python migrations/add_price_columns.py
+python migrations/create_simulations_table.py
+```
+
+### Step 4: Frontend Setup
+```bash
+# Navigate to frontend (from root or backend folder)
+cd ../frontend
+# OR from root: cd frontend
+
+# Install dependencies
+npm install
+```
+
+### Step 5: Start the Application
+
+**Terminal 1 - Backend API:**
+```bash
+cd backend
+venv\Scripts\activate  # Windows
+uvicorn main:app --reload --port 8000
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm start
+```
+
+**Access the Application:**
+- Frontend: http://localhost:3000
+- Backend API Docs: http://localhost:8000/docs
+
 ---
 
-## Step 4: Create .env File
+## 🔧 Background Tasks Setup (Optional - For Milestone 3)
 
-Inside backend folder, create a file named:
+If you need to run background tasks (price refresh, simulations):
 
-.env
+### Start Redis
+```bash
+# Using Docker (recommended)
+docker run -d -p 6379:6379 --name redis redis:latest
 
-Add this:
+# Or install Redis locally and run:
+redis-server
+```
 
-DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/wealth_db
-SECRET_KEY=supersecretkey
+### Start Celery Worker
+```bash
+cd backend
+venv\Scripts\activate
+
+# Windows:
+celery -A app.core.celery_app worker --loglevel=info --pool=solo
+
+# Mac/Linux:
+celery -A app.core.celery_app worker --loglevel=info
+```
+
+### Start Celery Beat (Scheduler)
+```bash
+cd backend
+celery -A app.core.celery_app beat --loglevel=info
+```
+
+---
+
+## 📁 Project Structure
+
+```
+personal-wealth-management/
+├── backend/
+│   ├── app/
+│   │   ├── core/
+│   │   │   └── celery_app.py      # Celery configuration
+│   │   └── services/
+│   │       └── tasks.py           # Background tasks
+│   ├── migrations/                 # Database migrations
+│   ├── main.py                    # FastAPI app & endpoints
+│   ├── models.py                  # SQLAlchemy models
+│   ├── schemas.py                 # Pydantic schemas
+│   ├── database.py                # Database connection
+│   ├── auth.py                    # Authentication
+│   ├── requirements.txt           # Python dependencies
+│   ├── .env.example               # Environment template
+│   └── BACKGROUND_TASKS.md        # Background tasks guide
+│
+└── frontend/
+    ├── src/
+    │   ├── components/            # React components
+    │   ├── pages/                 # Page components
+    │   └── api.js                 # API calls
+    └── package.json               # Node dependencies
+```
+
+---
+
+## 🌐 API Endpoints Overview
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/register` | Register new user |
+| POST | `/login` | Login user |
+
+### Portfolio & Assets
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/portfolio` | Get user portfolio |
+| GET | `/portfolio/overview` | Get portfolio summary |
+| **POST | `/api/market-refresh`** | **Refresh all asset prices from live market data (BE Dev 1)** |
+| POST | `/assets` | Add new asset |
+| POST | `/transactions` | Create transaction |
+
+
+### Goals
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/goals` | List all goals |
+| POST | `/goals` | Create new goal |
+| PUT | `/goals/{id}` | Update goal |
+| DELETE | `/goals/{id}` | Delete goal |
+
+### Simulations (Milestone 3)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/simulations/sip` | Run SIP simulation |
+| POST | `/api/simulations/retirement` | Run retirement simulation |
+| POST | `/api/simulations/loan` | Run loan payoff simulation |
+| POST | `/api/simulations/goal` | Run goal projection |
+| POST | `/api/simulations/calculate/*` | Calculate without saving |
+| GET | `/api/simulations` | List saved simulations |
+
+### Background Tasks (Milestone 3)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **POST | `/api/market-refresh`** | **✅ LIVE: Updates assets.current_value, last_price, last_price_at** |
+| POST | `/api/refresh/all` | Refresh all asset prices |
+| POST | `/api/refresh/user` | Refresh user's assets |
+| GET | `/api/refresh/status/{task_id}` | Check task status |
+
+---
+
+## ⚠️ Troubleshooting
+
+### Backend won't start
+```bash
+# Make sure virtual environment is activated
+venv\Scripts\activate  # Windows
+
+# Reinstall dependencies
+pip install -r requirements.txt
+```
+
+### Database connection error
+1. Check PostgreSQL is running
+2. Verify `.env` file has correct DATABASE_URL
+3. Make sure database `wealth_db` exists
+
+### Frontend won't start
+```bash
+# Clear node modules and reinstall
+rm -rf node_modules
+npm install
+```
+
+### Redis connection error
+- Make sure Redis server is running on port 6379
+- Check REDIS_URL in `.env`
+
+---
+
+## 📋 Environment Variables
+
+Create `.env` file in `backend/` folder:
+
+```env
+# Database
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/wealth_db
+
+# Security
+SECRET_KEY=your-secret-key-here
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Redis (for background tasks)
 REDIS_URL=redis://localhost:6379/0
 
-Replace "yourpassword" with your PostgreSQL password.
+# Alpha Vantage (API Key)
+ALPHA_VANTAGE_KEY=9D7A2V8CVVLJV4WT
+```
 
 ---
 
-## Step 5: Run Backend
+## 🏗️ Tech Stack
 
-uvicorn main:app --reload
-
-Open in browser:
-
-http://127.0.0.1:8000/docs
-
-If Swagger page opens, backend is working.
-
----
-
-# 6. Frontend Setup (React)
-
-Go to frontend folder:
-
-cd ../frontend
-
-Install dependencies:
-
-npm install
-
-If React app is not initialized:
-
-npx create-react-app .
-npm install axios react-router-dom
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
-
-Run frontend:
-
-npm start
-
-Open:
-
-http://localhost:3000
-
-If page loads, frontend is working.
+| Layer | Technology |
+|-------|------------|
+| Frontend | React.js, Tailwind CSS |
+| Backend | FastAPI (Python) |
+| Database | PostgreSQL |
+| Auth | JWT Tokens |
+| Background Tasks | Celery + Redis |
+| Market Data | yfinance |
 
 ---
 
-# 7. How System Works Together
+## 👥 Team Development
 
-Flow:
+### Before pushing code:
+1. Make sure all tests pass
+2. Don't commit `.env` file (it's in `.gitignore`)
+3. Update `requirements.txt` if you add new Python packages
+4. Update `package.json` if you add new npm packages
 
-Browser (User)
-    ->
-React Frontend
-    ->
-FastAPI Backend
-    ->
-PostgreSQL Database
-    ->
-Response back to User
-
-Frontend sends request.
-Backend processes logic.
-Database stores data.
-Backend returns response.
-Frontend displays result.
-
----
-
-# 8. Database Tables Overview
-
-Users
-- id
-- name
-- email
-- password
-- risk_profile (conservative/moderate/aggressive)
-- kyc_status
-- created_at
-
-Goals
-- id
-- user_id
-- goal_type
-- target_amount
-- target_date
-- monthly_contribution
-- status
-
-Investments
-- id
-- user_id
-- asset_type
-- symbol
-- units
-- avg_buy_price
-- cost_basis
-- current_value
-
-Transactions
-- id
-- user_id
-- symbol
-- type (buy/sell/dividend/etc.)
-- quantity
-- price
-- fees
-
-Recommendations
-- user_id
-- recommendation_text
-- suggested_allocation
-
-Simulations
-- goal_id
-- assumptions (JSON)
-- results (JSON)
-
----
-
-# 9. Modules You Will Build
-
-Module A: User Management
-- Register
-- Login
-- JWT authentication
-- Risk profile
-
-Module B: Goals
-- Create goal
-- Edit goal
-- Track progress
-
-Module C: Portfolio
-- Add investments
-- Add transactions
-- View portfolio summary
-
-Module D: Market Data
-- Fetch stock prices
-- Update nightly with Celery
-
-Module E: Reports & Recommendations
-- Allocation suggestions
-- Export PDF/CSV
-
----
-
-# 10. Common Errors
-
-Database connection failed:
-- Check PostgreSQL running
-- Check password in .env
-
-Module not found:
+### After pulling new code:
+```bash
+# Backend - install any new dependencies
+cd backend
 pip install -r requirements.txt
 
-Port already in use:
-uvicorn main:app --reload --port 8001
+# Frontend - install any new dependencies  
+cd frontend
+npm install
+
+# Run any new migrations
+cd backend
+python migrations/add_price_columns.py
+python migrations/create_simulations_table.py
+```
 
 ---
 
-# 11. Running Background Tasks
+## Need Help?
 
-Start Redis:
-
-redis-server
-
-Start Celery:
-
-celery -A celery_worker worker --loglevel=info
-
----
-
-# 12. Important Finance Terms (Simple Meaning)
-
-Portfolio = Collection of investments  
-SIP = Monthly fixed investment  
-Asset Allocation = How money is split across investments  
-Risk Profile = How much risk a user can handle  
-Simulation = Testing future possibilities  
-
----
-
-# 13. Recommended Folder Structure
-
-wealth-management-app/
-    backend/
-        app/
-            models/
-            schemas/
-            routes/
-            services/
-            core/
-        main.py
-        .env
-    frontend/
-        src/
-            pages/
-            components/
-            services/
-            App.js
-
----
-
-# 14. Final Advice for Interns
-
-Do not try to build everything at once.
-
-Step-by-step approach:
-1. Setup environment
-2. Make backend run
-3. Make frontend run
-4. Connect frontend to backend
-5. Build one module at a time
-
-Focus on understanding:
-- How data flows
-- How APIs work
-- How database stores data
-
-Finance knowledge will come gradually.
-
----
-
-End of README
+- Check the [BACKGROUND_TASKS.md](backend/BACKGROUND_TASKS.md) for detailed Celery setup
+- Backend API documentation: http://localhost:8000/docs
+- Open an issue in the repository if you encounter problems

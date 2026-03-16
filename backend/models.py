@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, TIMESTAMP, Float, ForeignKey, DateTime, Date
+from sqlalchemy import Column, Integer, String, Enum, TIMESTAMP, Float, ForeignKey, DateTime, Date, JSON
 from sqlalchemy.orm import relationship
 from database import Base
 from enum import Enum as PyEnum
@@ -57,8 +57,8 @@ class User(Base):
     phone_number = Column(String, nullable=True)
     residential_address = Column(String, nullable=True)
     date_of_birth = Column(Date, nullable=True)
-    risk_profile = Column(Enum(RiskEnum), default=RiskEnum.moderate)
-    kyc_status = Column(Enum(KYCEnum), default=KYCEnum.unverified)
+    risk_profile = Column("riskprofile", Enum(RiskEnum), default=RiskEnum.moderate)
+    kyc_status = Column("kycstatus", Enum(KYCEnum), default=KYCEnum.unverified)
     
     createdat = Column(TIMESTAMP, default=datetime.utcnow)
 
@@ -78,6 +78,9 @@ class Asset(Base):
     asset_class = Column(String, default="Stock")  # "Stock", "Bond", "ETF", "Crypto", "Cash"
     quantity = Column(Float)  # Total units owned
     buy_price = Column(Float)  # Average cost basis per unit
+    current_value = Column(Float, nullable=True)  # Current market value (units * last_price)
+    last_price = Column(Float, nullable=True)  # Last fetched price per unit
+    last_price_at = Column(TIMESTAMP, nullable=True)  # When the price was last updated
     owner_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="assets")
@@ -112,3 +115,20 @@ class Goal(Base):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="goals")
+
+
+class Simulation(Base):
+    """Simulations Table - stores What-if scenario results"""
+    __tablename__ = "simulations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=True)  # Optional link to a goal
+    scenario_name = Column(String, nullable=False)  # e.g., "Retirement Plan A", "SIP Scenario"
+    assumptions = Column(JSON, nullable=False)  # Input parameters as JSON
+    results = Column(JSON, nullable=False)  # Calculation results as JSON
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+
+    # Relationships
+    owner = relationship("User", backref="simulations")
+    goal = relationship("Goal", backref="simulations")
