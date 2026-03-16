@@ -12,6 +12,8 @@ import {
   Bar,
 } from "recharts";
 
+const API_URL = "http://127.0.0.1:8000";
+
 function Goals() {
   const [formData, setFormData] = useState({
     name: "",
@@ -31,18 +33,23 @@ function Goals() {
   const [suggestedContribution, setSuggestedContribution] = useState(0);
   const [suggestedLabel, setSuggestedLabel] = useState("");
 
-  /* Load stored goals */
+  /* =========================
+     FETCH GOALS FROM BACKEND
+     ========================= */
 
   useEffect(() => {
-    const stored = localStorage.getItem("goals");
-    if (stored) setGoals(JSON.parse(stored));
+    fetchGoals();
   }, []);
 
-  /* Save goals */
-
-  useEffect(() => {
-    localStorage.setItem("goals", JSON.stringify(goals));
-  }, [goals]);
+  const fetchGoals = async () => {
+    try {
+      const res = await fetch(`${API_URL}/goals/`);
+      const data = await res.json();
+      setGoals(data);
+    } catch (err) {
+      console.error("Error loading goals:", err);
+    }
+  };
 
   const formatINR = (num) => "₹" + Number(num || 0).toLocaleString("en-IN");
 
@@ -53,7 +60,9 @@ function Goals() {
     });
   };
 
-  /* Projection logic */
+  /* =========================
+     PROJECTION LOGIC
+     ========================= */
 
   const previewProjection = () => {
     const target = parseFloat(formData.target);
@@ -90,8 +99,6 @@ function Goals() {
     completion.setMonth(today.getMonth() + month);
     setCompletionDate(completion.toDateString());
 
-    /* Suggested contribution */
-
     if (formData.deadline) {
       const deadline = new Date(formData.deadline);
 
@@ -126,50 +133,62 @@ function Goals() {
     }
   };
 
-  /* Add goal */
+  /* =========================
+     ADD GOAL → POST API
+     ========================= */
 
-  const addGoal = () => {
+  const addGoal = async () => {
     if (!formData.name) return;
 
-    const exists = goals.find(
-      (g) => g.name.toLowerCase() === formData.name.toLowerCase(),
-    );
+    try {
+      const res = await fetch(`${API_URL}/goals`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          target: parseFloat(formData.target),
+          contribution: parseFloat(formData.contribution),
+          frequency: formData.frequency,
+        }),
+      });
 
-    if (exists) {
-      alert("Goal already exists");
-      return;
+      const newGoal = await res.json();
+
+      setGoals([...goals, newGoal]);
+
+      setFormData({
+        name: "",
+        target: "",
+        contribution: "",
+        deadline: "",
+        frequency: "Monthly",
+      });
+    } catch (err) {
+      console.error("Error creating goal:", err);
     }
-
-    const progress = (formData.contribution / formData.target) * 100;
-
-    const newGoal = {
-      name: formData.name,
-      target: formData.target,
-      contribution: formData.contribution,
-      frequency: formData.frequency,
-      progress: progress > 100 ? 100 : progress,
-    };
-
-    setGoals([...goals, newGoal]);
-
-    setFormData({
-      name: "",
-      target: "",
-      contribution: "",
-      deadline: "",
-      frequency: "Monthly",
-    });
   };
 
-  /* Delete goal */
+  /* =========================
+     DELETE GOAL → DELETE API
+     ========================= */
 
-  const deleteGoal = (index) => {
-    const updated = [...goals];
-    updated.splice(index, 1);
-    setGoals(updated);
+  const deleteGoal = async (goalId) => {
+    try {
+      await fetch(`${API_URL}/goals/${goalId}`, {
+        method: "DELETE",
+      });
+
+      setGoals(goals.filter((g) => g.id !== goalId));
+    } catch (err) {
+      console.error("Error deleting goal:", err);
+    }
   };
 
-  /* Summary */
+  /* =========================
+     SUMMARY
+     ========================= */
 
   const totalGoals = goals.length;
 
@@ -177,16 +196,16 @@ function Goals() {
 
   const avgProgress =
     goals.length > 0
-      ? (goals.reduce((sum, g) => sum + g.progress, 0) / goals.length).toFixed(
-          1,
-        )
+      ? (
+          goals.reduce((sum, g) => sum + (g.progress || 0), 0) / goals.length
+        ).toFixed(1)
       : 0;
 
   return (
     <div className="max-w-7xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Goals Dashboard</h1>
 
-      {/* Summary cards */}
+      {/* SUMMARY */}
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded shadow border">
@@ -205,218 +224,39 @@ function Goals() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT PANEL */}
+      {/* GOALS LIST */}
 
-        <div className="lg:col-span-7 flex flex-col gap-6">
-          {/* Create Goal */}
+      <div className="bg-white border rounded-lg p-6 shadow">
+        <h2 className="font-semibold mb-4">Your Goals</h2>
 
-          <div className="bg-white border rounded-lg p-6 shadow">
-            <h2 className="font-semibold mb-4">Create Goal</h2>
+        {goals.length === 0 && (
+          <p className="text-gray-500 text-sm">No goals added yet.</p>
+        )}
 
-            <input
-              type="text"
-              name="name"
-              placeholder="Goal Name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full border p-3 rounded mb-3"
-            />
+        {goals.map((goal) => (
+          <div key={goal.id} className="border p-4 rounded mb-3">
+            <div className="flex justify-between">
+              <div>
+                <p className="font-semibold">{goal.name}</p>
 
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <input
-                type="number"
-                name="target"
-                placeholder="Target Amount"
-                value={formData.target}
-                onChange={handleChange}
-                className="border p-3 rounded"
-              />
+                <p className="text-sm text-gray-500">
+                  Target: {formatINR(goal.target)}
+                </p>
 
-              <input
-                type="number"
-                name="contribution"
-                placeholder="Contribution"
-                value={formData.contribution}
-                onChange={handleChange}
-                className="border p-3 rounded"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <input
-                type="date"
-                name="deadline"
-                value={formData.deadline}
-                onChange={handleChange}
-                className="border p-3 rounded"
-              />
-
-              <select
-                name="frequency"
-                value={formData.frequency}
-                onChange={handleChange}
-                className="border p-3 rounded"
-              >
-                <option>Daily</option>
-                <option>Weekly</option>
-                <option>Monthly</option>
-                <option>Yearly</option>
-              </select>
-            </div>
-
-            <button
-              onClick={previewProjection}
-              className="w-full bg-blue-600 text-white py-3 rounded mb-2"
-            >
-              Preview Projection
-            </button>
-
-            <button
-              onClick={addGoal}
-              className="w-full bg-green-600 text-white py-3 rounded"
-            >
-              Add Goal
-            </button>
-          </div>
-
-          {/* Goals list */}
-
-          <div className="bg-white border rounded-lg p-6 shadow">
-            <h2 className="font-semibold mb-4">Your Goals</h2>
-
-            {goals.length === 0 && (
-              <p className="text-gray-500 text-sm">No goals added yet.</p>
-            )}
-
-            {goals.map((goal, index) => (
-              <div key={index} className="border p-4 rounded mb-3">
-                <div className="flex justify-between">
-                  <div>
-                    <p className="font-semibold">{goal.name}</p>
-
-                    <p className="text-sm text-gray-500">
-                      Target: {formatINR(goal.target)}
-                    </p>
-
-                    <p className="text-sm text-gray-500">
-                      Contribution: {formatINR(goal.contribution)}{" "}
-                      {goal.frequency}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => deleteGoal(index)}
-                    className="text-red-500"
-                  >
-                    Delete
-                  </button>
-                </div>
-
-                <div className="w-full bg-gray-200 h-3 rounded mt-2">
-                  <div
-                    className="bg-green-500 h-3 rounded"
-                    style={{ width: `${goal.progress}%` }}
-                  />
-                </div>
-
-                <p className="text-sm mt-1">
-                  {goal.progress.toFixed(1)}% complete
+                <p className="text-sm text-gray-500">
+                  Contribution: {formatINR(goal.contribution)} {goal.frequency}
                 </p>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* RIGHT PANEL */}
-
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white border rounded p-4">
-              <p className="text-sm text-gray-500">Estimated Months</p>
-              <p className="text-xl font-bold">{months}</p>
-            </div>
-
-            <div className="bg-white border rounded p-4">
-              <p className="text-sm text-gray-500">Remaining Amount</p>
-              <p className="text-xl font-bold text-red-500">
-                {formatINR(remaining)}
-              </p>
-            </div>
-
-            <div className="bg-white border rounded p-4 col-span-2">
-              <p className="text-sm text-gray-500">Estimated Completion Date</p>
-              <p className="text-lg font-bold">{completionDate || "-"}</p>
-            </div>
-
-            <div className="bg-white border rounded p-4 col-span-2">
-              <p className="text-sm text-gray-500">
-                Suggested {suggestedLabel} Contribution
-              </p>
-              <p className="text-xl font-bold text-green-600">
-                {suggestedContribution ? formatINR(suggestedContribution) : "-"}
-              </p>
+              <button
+                onClick={() => deleteGoal(goal.id)}
+                className="text-red-500"
+              >
+                Delete
+              </button>
             </div>
           </div>
-
-          {/* Chart */}
-
-          <div className="bg-white border rounded p-5 shadow">
-            <h3 className="font-semibold mb-3">Savings Projection</h3>
-
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-
-                <XAxis
-                  dataKey="month"
-                  label={{
-                    value: "Months",
-                    position: "insideBottom",
-                    offset: -5,
-                  }}
-                />
-
-                <YAxis />
-
-                <Tooltip formatter={(v) => formatINR(v)} />
-
-                <ReferenceLine
-                  y={formData.target}
-                  stroke="red"
-                  strokeDasharray="5 5"
-                />
-
-                <Line dataKey="value" stroke="#10B981" strokeWidth={3} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {goals.length > 1 && (
-            <div className="bg-white border rounded p-5 shadow">
-              <h3 className="font-semibold mb-3">Goal Comparison</h3>
-
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart
-                  data={goals.map((g, i) => ({
-                    name: g.name + " " + (i + 1),
-                    progress: g.progress,
-                  }))}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-
-                  <XAxis dataKey="name" />
-
-                  <YAxis />
-
-                  <Tooltip />
-
-                  <Bar dataKey="progress" fill="#10B981" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
+        ))}
       </div>
     </div>
   );
