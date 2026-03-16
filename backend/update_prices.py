@@ -47,11 +47,12 @@ def main():
     print(f"📈 Found {len(assets)} assets to update")
     
     # 3. GET API KEY
-    ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY")
+    ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY") or os.getenv("ALPHA_VANTAGE_API_KEY")
     
     if not ALPHA_VANTAGE_KEY:
-        print("❌ ALPHA_VANTAGE_KEY missing from .env file!")
+        print("❌ Alpha Vantage API key missing from .env file!")
         print("Add to .env: ALPHA_VANTAGE_KEY=your_key_here")
+        print("or: ALPHA_VANTAGE_API_KEY=your_key_here")
         conn.close()
         return
     

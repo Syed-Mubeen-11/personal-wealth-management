@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+const viteBaseUrl = typeof import.meta !== 'undefined' && import.meta.env
+    ? import.meta.env.VITE_API_BASE_URL
+    : undefined;
+const API_BASE_URL = viteBaseUrl || process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+
 const api = axios.create({
-    baseURL: "http://localhost:8001",
+    baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },

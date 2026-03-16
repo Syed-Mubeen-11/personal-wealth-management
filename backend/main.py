@@ -932,6 +932,21 @@ def trigger_full_price_refresh():
     }
 
 
+@app.get("/api/market/provider-status")
+def get_market_provider_status():
+    """
+    Report market-data provider configuration without exposing secrets.
+    """
+    key = os.getenv("ALPHA_VANTAGE_KEY") or os.getenv("ALPHA_VANTAGE_API_KEY")
+    alpha_vantage_configured = bool(key and key != "demo")
+
+    return {
+        "alpha_vantage_configured": alpha_vantage_configured,
+        "active_provider_mode": "alpha_vantage_with_yfinance_fallback" if alpha_vantage_configured else "yfinance_fallback_only",
+        "note": "Set ALPHA_VANTAGE_KEY or ALPHA_VANTAGE_API_KEY in backend/.env and restart backend/celery."
+    }
+
+
 @app.post("/api/refresh/user")
 def trigger_user_price_refresh(current_user: models.User = Depends(get_current_user)):
     """
@@ -1635,4 +1650,10 @@ def delete_simulation(
 
 @app.post("/api/market-refresh")
 def refresh_prices():
-    return {"status": "success", "message": "Run: python update_prices.py (Alpha Vantage)"}
+    task = refresh_all_asset_prices.delay()
+    return {
+        "status": "success",
+        "message": "Market refresh task started",
+        "task_id": task.id,
+        "status_url": f"/api/refresh/status/{task.id}"
+    }

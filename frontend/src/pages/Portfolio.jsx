@@ -5,6 +5,52 @@ import AssetAllocationChart from '../components/portfolio/AssetAllocationChart';
 import PositionsTable from '../components/portfolio/PositionsTable';
 import TransactionTable from '../components/portfolio/TransactionTable';
 
+const buildOverviewFromPositions = (positionsData = []) => {
+    const totalPortfolioValue = positionsData.reduce((sum, item) => sum + (Number(item.market_value) || 0), 0);
+    const totalCostBasis = positionsData.reduce(
+        (sum, item) => sum + ((Number(item.avg_buy_price) || 0) * (Number(item.units) || 0)),
+        0
+    );
+
+    const overallGainLoss = totalPortfolioValue - totalCostBasis;
+    const overallGainLossPercent = totalCostBasis > 0 ? (overallGainLoss / totalCostBasis) * 100 : 0;
+
+    return {
+        total_portfolio_value: Number(totalPortfolioValue.toFixed(2)),
+        total_cost_basis: Number(totalCostBasis.toFixed(2)),
+        overall_gain_loss: Number(overallGainLoss.toFixed(2)),
+        overall_gain_loss_percent: Number(overallGainLossPercent.toFixed(2)),
+        cash_balance: 0,
+        invested_value: Number(totalPortfolioValue.toFixed(2)),
+        total_positions: positionsData.length,
+        performance_today: 0,
+    };
+};
+
+const buildAllocationFromPositions = (positionsData = []) => {
+    if (!positionsData.length) {
+        return { labels: [], values: [], percentages: [], colors: [] };
+    }
+
+    const total = positionsData.reduce((sum, item) => sum + (Number(item.market_value) || 0), 0);
+    const palette = ['#0D9488', '#F97316', '#EAB308', '#5EEAD4', '#14B8A6', '#6366F1', '#22C55E', '#EF4444'];
+
+    const labels = [];
+    const values = [];
+    const percentages = [];
+    const colors = [];
+
+    positionsData.forEach((item, idx) => {
+        const value = Number(item.market_value) || 0;
+        labels.push(item.symbol || `Asset ${idx + 1}`);
+        values.push(Number(value.toFixed(2)));
+        percentages.push(Number((total > 0 ? (value / total) * 100 : 0).toFixed(2)));
+        colors.push(palette[idx % palette.length]);
+    });
+
+    return { labels, values, percentages, colors };
+};
+
 function Portfolio() {
     // Overview state
     const [overview, setOverview] = useState({
@@ -18,6 +64,8 @@ function Portfolio() {
         performance_today: 0
     });
     const [allocation, setAllocation] = useState([]);
+    const [marketWatch, setMarketWatch] = useState([]);
+    const [marketWatchLoading, setMarketWatchLoading] = useState(false);
 
     // Positions state with pagination
     const [positions, setPositions] = useState([]);
@@ -41,8 +89,12 @@ function Portfolio() {
     const loadOverview = useCallback(async () => {
         try {
             const res = await api.get('/portfolio/overview');
-            setOverview(res.data);
-            setAllocation(res.data.asset_allocation || []);
+            setOverview((prev) => ({ ...prev, ...res.data }));
+
+            const nextAllocation = res.data?.asset_allocation;
+            if (nextAllocation?.labels?.length) {
+                setAllocation(nextAllocation);
+            }
         } catch (err) {
             console.error("Overview load error", err);
         }
@@ -51,11 +103,32 @@ function Portfolio() {
     // Load paginated positions
     const loadPositions = useCallback(async (page = 1) => {
         try {
-            const res = await api.get(`/portfolio/positions?page=${page}&per_page=10`);
+            const res = await api.get(`/portfolio/positions?page=${page}&limit=10`);
             console.log("Positions API Response:", res.data);
-            setPositions(res.data.data || []);
+            const positionsData = res.data.data || [];
+            setPositions(positionsData);
             setPositionsTotalPages(res.data.total_pages || 1);
             setPositionsPage(res.data.current_page || 1);
+
+            // Fallback: keep cards/chart populated if overview API is empty/failing.
+            if (positionsData.length) {
+                setOverview((prev) => {
+                    if (prev.total_portfolio_value > 0) {
+                        return prev;
+                    }
+                    return {
+                        ...prev,
+                        ...buildOverviewFromPositions(positionsData),
+                    };
+                });
+
+                setAllocation((prev) => {
+                    if (prev?.labels?.length) {
+                        return prev;
+                    }
+                    return buildAllocationFromPositions(positionsData);
+                });
+            }
         } catch (err) {
             console.error("Positions load error", err);
         }
@@ -78,11 +151,53 @@ function Portfolio() {
         }
     };
 
+    // Load a small live market watch list to show prices even with no holdings
+    const loadMarketWatch = useCallback(async () => {
+        const symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'];
+        setMarketWatchLoading(true);
+        try {
+            const results = await Promise.allSettled(
+                symbols.map(async (symbolItem) => {
+                    try {
+                        const res = await api.get(`/stock/${symbolItem}`);
+                        return {
+                            symbol: res.data.symbol,
+                            price: res.data.price
+                        };
+                    } catch {
+                        // Fallback path: bypass shared API client if it is misconfigured
+                        const fallbackRes = await fetch(`http://127.0.0.1:8000/stock/${symbolItem}`);
+                        if (!fallbackRes.ok) {
+                            throw new Error(`Fallback failed for ${symbolItem}`);
+                        }
+                        const fallbackData = await fallbackRes.json();
+                        return {
+                            symbol: fallbackData.symbol,
+                            price: fallbackData.price
+                        };
+                    }
+                })
+            );
+
+            const parsed = results
+                .filter((item) => item.status === 'fulfilled')
+                .map((item) => item.value);
+
+            setMarketWatch(parsed);
+        } catch (err) {
+            console.error('Market watch load error', err);
+            setMarketWatch([]);
+        } finally {
+            setMarketWatchLoading(false);
+        }
+    }, []);
+
     // Initial load only
     useEffect(() => {
         loadOverview();
         loadPositions(1);
         loadTransactions(1, '', '');
+        loadMarketWatch();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -250,6 +365,33 @@ function Portfolio() {
                         onSell={sellAsset}
                     />
                 </div>
+            </div>
+
+            {/* Live market prices for discovery, even when portfolio is empty */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Live Market Watch</h2>
+                    <button
+                        onClick={loadMarketWatch}
+                        disabled={marketWatchLoading}
+                        className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {marketWatchLoading ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                </div>
+
+                {marketWatch.length === 0 ? (
+                    <p className="text-gray-500 text-sm">Unable to fetch live prices right now.</p>
+                ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                        {marketWatch.map((item) => (
+                            <div key={item.symbol} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                <p className="text-xs text-gray-500">{item.symbol}</p>
+                                <p className="text-lg font-bold text-teal-700">${Number(item.price).toFixed(2)}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Transaction Management */}
