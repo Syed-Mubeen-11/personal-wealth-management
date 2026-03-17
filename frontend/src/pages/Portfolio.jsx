@@ -51,7 +51,7 @@ function Portfolio() {
     // Load paginated positions
     const loadPositions = useCallback(async (page = 1) => {
         try {
-            const res = await api.get(`/portfolio/positions?page=${page}&per_page=10`);
+            const res = await api.get(`/portfolio/positions?page=${page}&limit=10`);
             console.log("Positions API Response:", res.data);
             setPositions(res.data.data || []);
             setPositionsTotalPages(res.data.total_pages || 1);

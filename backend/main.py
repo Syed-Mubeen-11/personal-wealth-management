@@ -37,6 +37,32 @@ from app.services.tasks import run_simulation_task
 # ---------------------------------------------------------
 models.Base.metadata.create_all(bind=engine)
 
+# Auto-migrate: add any missing columns that were added after initial DB creation
+def _run_migrations():
+    import sqlite3, os
+    db_path = os.path.join(os.path.dirname(__file__), "users.db")
+    if not os.path.exists(db_path):
+        return
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    # Assets table - columns added in later versions
+    assets_migrations = {
+        "current_value": "REAL",
+        "last_price": "REAL",
+        "last_price_at": "TIMESTAMP",
+        "company_name": "TEXT",
+        "asset_class": "TEXT DEFAULT 'Stock'",
+    }
+    cursor.execute("PRAGMA table_info(assets)")
+    existing = {row[1] for row in cursor.fetchall()}
+    for col, col_type in assets_migrations.items():
+        if col not in existing:
+            cursor.execute(f"ALTER TABLE assets ADD COLUMN {col} {col_type}")
+    conn.commit()
+    conn.close()
+
+_run_migrations()
+
 app = FastAPI()
 
 # ---------------------------------------------------------
@@ -44,17 +70,10 @@ app = FastAPI()
 # ---------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "http://localhost:3000", 
-        "http://localhost:5174",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],  
-    allow_credentials=True,
-    allow_methods=["*"],  
-    allow_headers=["*"],  
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -742,14 +761,60 @@ def get_recommendations(risk: str):
 
 @app.post("/simulate/start/")
 def start_simulation(monthly_investment: float, years: int):
-    task = run_simulation_task.delay(monthly_investment, years, 0.07)
-    return {"task_id": task.id}
+    # Run synchronously (no Redis/Celery required)
+    import uuid
+    task_id = str(uuid.uuid4())
+    result = _run_simulation_sync(monthly_investment, years, 0.07)
+    _simulation_cache[task_id] = result
+    return {"task_id": task_id}
+
+# In-memory cache for synchronous simulation results (fallback when Redis/Celery unavailable)
+_simulation_cache: dict = {}
+
+def _run_simulation_sync(monthly_investment: float, years: int, interest_rate: float) -> dict:
+    total_value = 0.0
+    year_by_year = []
+    for year in range(1, years + 1):
+        for _ in range(12):
+            total_value += monthly_investment
+            total_value += total_value * (interest_rate / 12)
+        year_by_year.append({"year": year, "value": round(total_value, 2)})
+    total_invested = monthly_investment * 12 * years
+    return {
+        "total_wealth": round(total_value, 2),
+        "total_invested": round(total_invested, 2),
+        "estimated_profit": round(total_value - total_invested, 2),
+        "year_by_year": year_by_year
+    }
 
 @app.get("/simulate/result/{task_id}")
 def get_simulation_result(task_id: str):
-    res = AsyncResult(task_id, app=celery_app)
-    if res.state == 'SUCCESS': return {"status": "Completed", "result": res.result}
+    # All results are stored in the in-memory cache (no Celery/Redis needed)
+    if task_id in _simulation_cache:
+        return {"status": "Completed", "result": _simulation_cache[task_id]}
     return {"status": "Processing..."}
+
+@app.post("/simulations")
+def save_simulation(
+    payload: schemas.SaveSimulationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Save a simulation result from the Simulator page."""
+    sim = models.Simulation(
+        user_id=current_user.id,
+        scenario_name=f"SIP Simulation - ${payload.monthly_investment}/mo x {payload.years}yr",
+        assumptions={
+            "monthly_investment": payload.monthly_investment,
+            "years": payload.years,
+            "interest_rate": 0.07
+        },
+        results=payload.result or {}
+    )
+    db.add(sim)
+    db.commit()
+    db.refresh(sim)
+    return {"id": sim.id, "message": "Simulation saved successfully"}
 # ---------------------------------------------------------
 # GOALS CRUD
 # ---------------------------------------------------------

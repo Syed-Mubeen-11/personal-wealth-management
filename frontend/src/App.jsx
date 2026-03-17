@@ -11,7 +11,7 @@ import Dashboard from './pages/Dashboard';
 import ProfileRisk from './pages/ProfileRisk'; 
 import Portfolio from './pages/Portfolio';
 import Goals from './pages/Goals';
-import Simulator from './pages/Simulator'; 
+import SimulatorCharts from './pages/SimulatorCharts'; 
 import AIAdvice from './pages/AIAdvice';
 
 // --- SECURE ROUTE WRAPPER ---
@@ -36,7 +36,7 @@ export default function App() {
                 <Route path="/profile" element={<PrivateRoute><Layout><ProfileRisk /></Layout></PrivateRoute>} />
                 <Route path="/portfolio" element={<PrivateRoute><Layout><Portfolio /></Layout></PrivateRoute>} />
                 <Route path="/goals" element={<PrivateRoute><Layout><Goals /></Layout></PrivateRoute>} />
-                <Route path="/simulator" element={<PrivateRoute><Layout><Simulator /></Layout></PrivateRoute>} />
+                <Route path="/simulator" element={<PrivateRoute><Layout><SimulatorCharts /></Layout></PrivateRoute>} />
                 <Route path="/ai-advice" element={<PrivateRoute><Layout><AIAdvice /></Layout></PrivateRoute>} />
 
                 {/* Catch-all Redirect */}

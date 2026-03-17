@@ -363,3 +363,12 @@ class PaginatedSimulationsResponse(BaseModel):
     total: int
     current_page: int
     total_pages: int
+
+
+# ---------------------------------------------------------
+# SAVE SIMULATION (from Simulator page)
+# ---------------------------------------------------------
+class SaveSimulationRequest(BaseModel):
+    monthly_investment: float
+    years: int
+    result: Optional[Dict[str, Any]] = None
