@@ -66,6 +66,7 @@ function Portfolio() {
     const [allocation, setAllocation] = useState([]);
     const [marketWatch, setMarketWatch] = useState([]);
     const [marketWatchLoading, setMarketWatchLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Positions state with pagination
     const [positions, setPositions] = useState([]);
@@ -194,10 +195,13 @@ function Portfolio() {
 
     // Initial load only
     useEffect(() => {
-        loadOverview();
-        loadPositions(1);
-        loadTransactions(1, '', '');
-        loadMarketWatch();
+        setIsLoading(true);
+        Promise.all([
+            loadOverview(),
+            loadPositions(1),
+            loadTransactions(1, '', ''),
+            loadMarketWatch()
+        ]).finally(() => setIsLoading(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -302,6 +306,15 @@ function Portfolio() {
             alert("Failed to sell: " + (err.response?.data?.detail || err.message));
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-teal-800 font-bold">Fetching live portfolio data...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">

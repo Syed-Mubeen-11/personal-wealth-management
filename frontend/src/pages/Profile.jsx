@@ -12,15 +12,19 @@ function Profile() {
         kyc_status: 'unverified'
     });
     const [loading, setLoading] = useState(false);
+    const [isPageLoading, setIsPageLoading] = useState(true);
 
     // Fetch existing profile data on load
     useEffect(() => {
         const fetchProfile = async () => {
+            setIsPageLoading(true);
             try {
                 const res = await api.get('/profile/');
                 setUser(res.data);
             } catch (err) {
                 console.error("Failed to load profile", err);
+            } finally {
+                setIsPageLoading(false);
             }
         };
         fetchProfile();
@@ -73,6 +77,15 @@ function Profile() {
         }
         setLoading(false);
     };
+
+    if (isPageLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-blue-800 font-bold">Loading profile...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-6xl mx-auto p-8 bg-gray-50 min-h-screen">

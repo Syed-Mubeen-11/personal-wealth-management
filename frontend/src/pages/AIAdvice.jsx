@@ -4,12 +4,14 @@ import api from '../api';
 function AIAdvice() {
     const [profile, setProfile] = useState(null);
     const [recommendations, setRecommendations] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         loadAdvice();
     }, []);
 
     const loadAdvice = async () => {
+        setIsLoading(true);
         try {
             // 1. Get User Risk Profile
             const userRes = await api.get('/profile/');
@@ -20,8 +22,19 @@ function AIAdvice() {
             setRecommendations(recRes.data);
         } catch (err) {
             console.error("Failed to load advice");
+        } finally {
+            setIsLoading(false);
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-blue-800 font-bold">Loading AI advice...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-5xl mx-auto p-8 bg-gray-50 min-h-screen">

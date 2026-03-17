@@ -62,6 +62,12 @@ function PositionsTable({ positions, currentPage, totalPages, onPageChange, onMa
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-gray-900">
                                         ${formatCurrency(pos.current_price)}
+                                        {pos.is_live && (
+                                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
+                                                <span className="w-1.5 h-1.5 mr-1 bg-green-500 rounded-full animate-pulse"></span>
+                                                Live
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-gray-900 font-medium">
                                         ${formatCurrency(pos.market_value)}

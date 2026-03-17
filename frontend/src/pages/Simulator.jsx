@@ -1057,7 +1057,13 @@ Generated via Wealth Tracker • ${timestamp}`;
                         {/* SIP Results */}
                         {activeTab === 'sip' && (
                             <>
-                                {sipResult ? (
+                                {loading ? (
+                                    <div className="bg-white rounded-xl shadow-sm p-12 border border-gray-200 flex flex-col items-center justify-center h-full">
+                                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                        <p className="text-lg font-medium text-gray-700">Running advanced simulations...</p>
+                                        <p className="text-sm text-gray-500">Calculating your financial future</p>
+                                    </div>
+                                ) : sipResult ? (
                                     <>
                                         {/* Result Cards */}
                                         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -1101,7 +1107,13 @@ Generated via Wealth Tracker • ${timestamp}`;
                         {/* Retirement Results */}
                         {activeTab === 'retirement' && (
                             <>
-                                {retirementResult ? (
+                                {loading ? (
+                                    <div className="bg-white rounded-xl shadow-sm p-12 border border-gray-200 flex flex-col items-center justify-center h-full">
+                                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                        <p className="text-lg font-medium text-gray-700">Running advanced simulations...</p>
+                                        <p className="text-sm text-gray-500">Calculating your financial future</p>
+                                    </div>
+                                ) : retirementResult ? (
                                     <>
                                         {/* Result Cards */}
                                         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -1157,7 +1169,13 @@ Generated via Wealth Tracker • ${timestamp}`;
                         {/* Loan Results */}
                         {activeTab === 'loan' && (
                             <>
-                                {loanResult ? (
+                                {loading ? (
+                                    <div className="bg-white rounded-xl shadow-sm p-12 border border-gray-200 flex flex-col items-center justify-center h-full">
+                                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                        <p className="text-lg font-medium text-gray-700">Running advanced simulations...</p>
+                                        <p className="text-sm text-gray-500">Calculating your financial future</p>
+                                    </div>
+                                ) : loanResult ? (
                                     <>
                                         {/* Result Cards */}
                                         <div className="grid grid-cols-3 gap-4 mb-6">

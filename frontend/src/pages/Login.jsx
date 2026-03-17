@@ -7,11 +7,13 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
     try {
       // Uses your secure API instance instead of hardcoded localhost
       const resp = await api.post("/login", form);
@@ -24,6 +26,8 @@ export default function Login() {
       }
     } catch (err) {
       setError(err?.response?.data?.detail || "Login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,9 +68,15 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full py-3 rounded-lg bg-[#1B3C53] text-white font-medium hover:bg-[#234C6A] transition"
+            disabled={loading}
+            className={`w-full py-3 rounded-lg bg-[#1B3C53] text-white font-medium hover:bg-[#234C6A] transition ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            Log in
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Signing in...
+              </div>
+            ) : "Log in"}
           </button>
 
           <p className="text-center text-sm text-gray-600 mt-4">

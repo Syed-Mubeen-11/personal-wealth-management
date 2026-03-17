@@ -19,11 +19,11 @@ export default function ProfileRisk() {
   });
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    fetchProfile();
-    fetchHistory();
+    Promise.all([fetchProfile(), fetchHistory()]).finally(() => setIsPageLoading(false));
   }, []);
 
   const fetchProfile = async () => {
@@ -96,6 +96,15 @@ export default function ProfileRisk() {
     { id: 'moderate', title: 'Moderate', icon: <Layers className="w-5 h-5" />, desc: 'Balances capital growth with acceptable levels of market risk.', color: 'from-indigo-500 to-purple-400', badge: 'text-indigo-700 bg-indigo-100' },
     { id: 'aggressive', title: 'Aggressive', icon: <TrendingUp className="w-5 h-5" />, desc: 'Maximizes growth potential, fully accepting high volatility.', color: 'from-rose-500 to-orange-400', badge: 'text-rose-700 bg-rose-100' }
   ];
+
+  if (isPageLoading) {
+      return (
+          <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+              <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="mt-4 text-indigo-800 font-bold">Loading profile and risk data...</p>
+          </div>
+      );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16 font-sans selection:bg-indigo-100">
