@@ -25,6 +25,7 @@ export default function Register() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   // ---------------- VALIDATIONS ----------------
@@ -67,6 +68,8 @@ export default function Register() {
         // Something else went wrong
         setError("An unexpected error occurred.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -242,14 +245,19 @@ export default function Register() {
             {/* BUTTON */}
             <button
               type="submit"
-              disabled={!isFormValid}
+              disabled={!isFormValid || loading}
               className={`w-full py-3 rounded-lg font-medium transition-all duration-300 ${
-                isFormValid
+                isFormValid && !loading
                   ? "bg-[#1B3C53] text-white hover:bg-[#234C6A]"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
             >
-              Register
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Creating Account...
+                </div>
+              ) : "Register"}
             </button>
           </form>
 

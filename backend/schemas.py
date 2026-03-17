@@ -96,6 +96,8 @@ class PositionResponse(BaseModel):
     market_value: float
     gain_loss: float
     gain_loss_percent: float
+    is_live: bool = False
+    last_updated: Optional[str] = None
 
 
 class OverviewResponse(BaseModel):
@@ -106,6 +108,7 @@ class OverviewResponse(BaseModel):
     overall_gain_loss_percent: float
     performance_today: float
     performance_today_percent: float
+    last_updated: Optional[str] = None
 
 
 class AssetAllocationItem(BaseModel):
@@ -133,6 +136,7 @@ class PortfolioOverviewResponse(BaseModel):
     overall_gain_loss: float
     overall_gain_loss_percent: float
     asset_allocation: AssetAllocationResponse
+    last_updated: Optional[str] = None
 
 
 class PositionTableResponse(BaseModel):
@@ -145,6 +149,8 @@ class PositionTableResponse(BaseModel):
     market_value: float
     gain_loss: float
     gain_loss_percent: float
+    is_live: bool = False
+    last_updated: Optional[str] = None
 
 
 class PaginatedPositionsResponse(BaseModel):

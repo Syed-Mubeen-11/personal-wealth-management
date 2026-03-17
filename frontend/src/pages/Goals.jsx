@@ -31,9 +31,11 @@ function Goals() {
 
   const [suggestedContribution, setSuggestedContribution] = useState(0);
   const [suggestedLabel, setSuggestedLabel] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   /* Load goals from backend API */
   const fetchGoals = async () => {
+    setIsLoading(true);
     try {
       const res = await api.get('/goals');
       // Map backend response to frontend format
@@ -54,6 +56,8 @@ function Goals() {
       // Fallback to localStorage if API fails
       const stored = localStorage.getItem("goals");
       if (stored) setGoals(JSON.parse(stored));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -229,6 +233,15 @@ function Goals() {
           1,
         )
       : 0;
+
+  if (isLoading) {
+      return (
+          <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="mt-4 text-blue-800 font-bold">Loading your goals...</p>
+          </div>
+      );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-6">

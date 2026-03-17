@@ -44,25 +44,30 @@ function Recommendations() {
             </div>
 
             {/* Advice Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {advice.map((item, index) => (
-                    <div key={index} className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
-                        <div className="flex justify-between items-start mb-2">
-                            <h3 className="text-xl font-bold text-gray-800">{item.name}</h3>
-                            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-                                {item.symbol}
-                            </span>
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-20 mt-8">
+                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-4 text-blue-800 font-bold">Analyzing your profile...</p>
+                </div>
+            ) : advice.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    {advice.map((item, index) => (
+                        <div key={index} className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
+                            <div className="flex justify-between items-start mb-2">
+                                <h3 className="text-xl font-bold text-gray-800">{item.name}</h3>
+                                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
+                                    {item.symbol}
+                                </span>
+                            </div>
+                            <p className="text-gray-600 mb-4">{item.reason}</p>
+                            <div className="text-right">
+                                <span className="text-sm font-bold text-gray-500 uppercase">Recommended Allocation: </span>
+                                <span className="text-lg font-bold text-blue-600">{item.allocation}%</span>
+                            </div>
                         </div>
-                        <p className="text-gray-600 mb-4">{item.reason}</p>
-                        <div className="text-right">
-                            <span className="text-sm font-bold text-gray-500 uppercase">Recommended Allocation: </span>
-                            <span className="text-lg font-bold text-blue-600">{item.allocation}%</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            
-            {advice.length === 0 && !loading && (
+                    ))}
+                </div>
+            ) : (
                 <div className="text-center text-gray-400 mt-10">
                     <p>Select a risk level and click "Get AI Advice" to see recommendations.</p>
                 </div>
