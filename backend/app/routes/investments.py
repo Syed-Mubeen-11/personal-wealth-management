@@ -6,7 +6,6 @@ from app.schemas.investments import InvestmentCreate, InvestmentResponse, Invest
 from app.models.user import User
 from app.core.auth import get_current_user
 from datetime import datetime
-import yfinance as yf
 from app.services.asset_price import get_asset_price
 
 router = APIRouter()
@@ -21,19 +20,25 @@ def get_db():
 
 
 #  Create Investment
-@router.post("/investments/")
-def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
-
+@router.post("/", response_model=InvestmentResponse)
+def create_investment(
+    data: InvestmentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     price = get_asset_price(data.symbol, data.asset_type)
+    cost_basis = float(data.units) * float(data.avg_buy_price)
 
     investment = Investment(
+        user_id=current_user.id,
         symbol=data.symbol,
         asset_type=data.asset_type,
         units=data.units,
         avg_buy_price=data.avg_buy_price,
-        current_price=price,
+        cost_basis=cost_basis,
+        current_value=price,
         last_price=price,
-        last_price_timestamp=datetime.utcnow()
+        last_price_at=datetime.utcnow()
     )
 
     db.add(investment)
@@ -41,6 +46,7 @@ def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
     db.refresh(investment)
 
     return investment
+
 
 #  Get User Investments
 @router.get("/", response_model=list[InvestmentResponse])
@@ -72,6 +78,8 @@ def delete_investment(
     db.commit()
     return {"message": "Investment deleted"}
 
+
+#  Update Investment
 @router.put("/{investment_id}", response_model=InvestmentResponse)
 def update_investment(
     investment_id: int,
@@ -97,16 +105,27 @@ def update_investment(
     db.refresh(investment)
     return investment
 
-@router.post("/investments/{id}/refresh-price")
-def refresh_price(id: int, db: Session = Depends(get_db)):
 
-    inv = db.query(Investment).filter(Investment.id == id).first()
+#  Refresh Price
+@router.post("/{id}/refresh-price")
+def refresh_price(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    inv = db.query(Investment).filter(
+        Investment.id == id,
+        Investment.user_id == current_user.id
+    ).first()
+
+    if not inv:
+        raise HTTPException(status_code=404, detail="Investment not found")
 
     new_price = get_asset_price(inv.symbol, inv.asset_type)
 
-    inv.last_price = inv.current_price
-    inv.current_price = new_price
-    inv.last_price_timestamp = datetime.utcnow()
+    inv.last_price = inv.current_value
+    inv.current_value = new_price
+    inv.last_price_at = datetime.utcnow()
 
     db.commit()
     db.refresh(inv)

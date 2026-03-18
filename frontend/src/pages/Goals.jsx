@@ -20,20 +20,23 @@ function Goals() {
 
   // Fetch Goals
   const fetchGoals = async () => {
-
-    const res = await axios.get("http://localhost:8000/goals/", {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    setGoals(res.data);
-
-    if (res.data.length > 0) {
-      setSelectedGoal(res.data[0]);
+    try {
+      const res = await axios.get("http://localhost:8000/goals/", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setGoals(res.data);
+      if (res.data.length > 0) {
+        setSelectedGoal(res.data[0]);
+      } else {
+        setSelectedGoal(null);
+      }
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        window.location.href = "/login";
+      } else {
+        console.error("Failed to fetch goals", err);
+      }
     }
-    else{
-          setSelectedGoal(null)
-    }
-
   };
 
   useEffect(() => {

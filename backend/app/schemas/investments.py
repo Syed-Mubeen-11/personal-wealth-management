@@ -33,7 +33,7 @@ class InvestmentResponse(BaseModel):
     symbol: str
     units: float
     avg_buy_price: float
-    cost_basis: float
+    cost_basis: float | None = None
     current_value: float | None = None
     last_price: float | None = None
     last_price_at: datetime | None = None

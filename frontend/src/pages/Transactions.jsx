@@ -18,25 +18,36 @@ function Transactions() {
   const token = localStorage.getItem("token");
 
   const fetchTransactions = async () => {
-
-    const res = await axios.get(
-      "http://localhost:8000/transactions/",
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    setTransactions(res.data || []);
-
+    try {
+      const res = await axios.get(
+        "http://localhost:8000/transactions/",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setTransactions(res.data || []);
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        window.location.href = "/login";
+      } else {
+        console.error("Failed to fetch transactions", err);
+      }
+    }
   };
+
   const fetchInvestments = async () => {
-
- const res = await axios.get(
-   "http://localhost:8000/investments/",
-   { headers: { Authorization: `Bearer ${token}` } }
- );
-
- setInvestments(res.data);
-
-};
+    try {
+      const res = await axios.get(
+        "http://localhost:8000/investments/",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setInvestments(res.data);
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        window.location.href = "/login";
+      } else {
+        console.error("Failed to fetch investments", err);
+      }
+    }
+  };
 
   useEffect(() => {
     fetchInvestments();

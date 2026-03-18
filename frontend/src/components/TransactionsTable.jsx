@@ -1,6 +1,6 @@
 import React from "react";
 
-function TransactionsTable({ transactions = [], onEdit, onDelete }) {
+function TransactionsTable({ transactions = [], onEdit, onDelete, showActions = true }) {
 
   return (
 
@@ -19,7 +19,7 @@ function TransactionsTable({ transactions = [], onEdit, onDelete }) {
             <th className="p-2">Quantity</th>
             <th className="p-2">Price</th>
             <th className="p-2">Date</th>
-            <th className="p-2">Actions</th>
+            {showActions && <th className="p-2">Actions</th>}
           </tr>
         </thead>
 
@@ -35,23 +35,25 @@ function TransactionsTable({ transactions = [], onEdit, onDelete }) {
               <td>₹{tx.price}</td>
               <td>{new Date(tx.executed_at).toLocaleDateString()}</td>
 
-              <td className="space-x-2">
+              {showActions && (
+                <td className="space-x-2">
 
-                <button
-                  onClick={() => onEdit(tx)}
-                  className="bg-yellow-500 text-white px-2 py-1 rounded"
-                >
-                  Edit
-                </button>
+                  <button
+                    onClick={() => onEdit(tx)}
+                    className="bg-yellow-500 text-white px-2 py-1 rounded"
+                  >
+                    Edit
+                  </button>
 
-                <button
-                  onClick={() => onDelete(tx.id)}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
-                >
-                  Delete
-                </button>
+                  <button
+                    onClick={() => onDelete(tx.id)}
+                    className="bg-red-500 text-white px-2 py-1 rounded"
+                  >
+                    Delete
+                  </button>
 
-              </td>
+                </td>
+              )}
 
             </tr>
 
