@@ -3,6 +3,22 @@ import time
 from datetime import datetime
 import yfinance as yf
 import logging
+import os
+import sys
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def _ensure_backend_path():
+    """Ensure backend root is importable for worker-side absolute imports."""
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+
+
+_ensure_backend_path()
 
 # Configure logging for tasks
 logging.basicConfig(level=logging.INFO)
@@ -39,20 +55,35 @@ def run_simulation_task(monthly_investment: float, years: int, interest_rate: fl
 
 def get_db_session():
     """Create a new database session for Celery tasks"""
-    import os
-    import sys
-    
-    # Add backend directory to path for imports
-    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    if backend_dir not in sys.path:
-        sys.path.insert(0, backend_dir)
+    _ensure_backend_path()
     
     from database import SessionLocal
     return SessionLocal()
 
 
 def fetch_stock_price(symbol: str) -> float:
-    """Fetch current stock price from yfinance API"""
+    """Fetch stock price using Alpha Vantage first, then yfinance fallback."""
+    alpha_key = os.getenv("ALPHA_VANTAGE_KEY") or os.getenv("ALPHA_VANTAGE_API_KEY")
+
+    if alpha_key and alpha_key != "demo":
+        try:
+            response = requests.get(
+                "https://www.alphavantage.co/query",
+                params={
+                    "function": "GLOBAL_QUOTE",
+                    "symbol": symbol,
+                    "apikey": alpha_key,
+                },
+                timeout=15,
+            )
+            data = response.json()
+            quote = data.get("Global Quote", {})
+            price_raw = quote.get("05. price")
+            if price_raw:
+                return float(price_raw)
+        except Exception as e:
+            logger.warning(f"Alpha Vantage failed for {symbol}: {str(e)}; falling back to yfinance")
+
     try:
         ticker = yf.Ticker(symbol)
         history = ticker.history(period="1d")
@@ -70,6 +101,7 @@ def refresh_asset_price(self, asset_id: int):
     Refresh the price for a single asset.
     Updates current_value, last_price, and last_price_at fields.
     """
+    _ensure_backend_path()
     import models
     
     db = get_db_session()
@@ -115,6 +147,7 @@ def refresh_user_assets(self, user_id: int):
     Refresh all asset prices for a specific user.
     Returns summary of updated assets.
     """
+    _ensure_backend_path()
     import models
     
     db = get_db_session()
@@ -183,6 +216,7 @@ def refresh_all_asset_prices(self):
     - Updates last_price, current_value, and last_price_at
     - Logs progress and results
     """
+    _ensure_backend_path()
     import models
     
     db = get_db_session()
@@ -233,8 +267,8 @@ def refresh_all_asset_prices(self):
                 failed_symbols.append(symbol)
                 logger.warning(f"[{symbol}] Failed to fetch price")
             
-            # Delay to avoid rate limiting (yfinance has rate limits)
-            time.sleep(1)
+            # Alpha Vantage free tier is 5 calls/minute; with yfinance fallback this remains safe.
+            time.sleep(12)
         
         db.commit()
         

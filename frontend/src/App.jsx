@@ -8,10 +8,11 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import ProfileRisk from './pages/ProfileRisk'; 
+import Profile from './pages/Profile'; 
 import Portfolio from './pages/Portfolio';
 import Goals from './pages/Goals';
-import Simulator from './pages/Simulator'; 
+import SimulatorCharts from './pages/SimulatorCharts'; 
+import Simulator from './pages/Simulator';
 import AIAdvice from './pages/AIAdvice';
 
 // --- SECURE ROUTE WRAPPER ---
@@ -33,10 +34,11 @@ export default function App() {
                 <Route path="/" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
                 <Route path="/dashboard" element={<Navigate to="/" replace />} />
                 
-                <Route path="/profile" element={<PrivateRoute><Layout><ProfileRisk /></Layout></PrivateRoute>} />
+                <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />
                 <Route path="/portfolio" element={<PrivateRoute><Layout><Portfolio /></Layout></PrivateRoute>} />
                 <Route path="/goals" element={<PrivateRoute><Layout><Goals /></Layout></PrivateRoute>} />
-                <Route path="/simulator" element={<PrivateRoute><Layout><Simulator /></Layout></PrivateRoute>} />
+                <Route path="/simulator" element={<PrivateRoute><Layout><SimulatorCharts /></Layout></PrivateRoute>} />
+                <Route path="/simulator-full" element={<PrivateRoute><Layout><Simulator /></Layout></PrivateRoute>} />
                 <Route path="/ai-advice" element={<PrivateRoute><Layout><AIAdvice /></Layout></PrivateRoute>} />
 
                 {/* Catch-all Redirect */}

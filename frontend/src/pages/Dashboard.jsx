@@ -12,12 +12,14 @@ export default function Dashboard() {
 
     // --- YOUR BACKEND STATES ---
     const [isAuth, setIsAuth] = useState(false);
-    const [summary, setSummary] = useState({ balance: 0, income: 0, expense: 0 });
+    const [isLoading, setIsLoading] = useState(true);
+    const [summary, setSummary] = useState({ balance: 0, income: 0, expense: 0, last_updated: null });
     const [user, setUser] = useState({ name: 'User', email: '' });
-    const [portfolio, setPortfolio] = useState({ overview: { total_portfolio_value: 0, overall_gain_loss: 0 } });
+    const [portfolio, setPortfolio] = useState({ overview: { total_portfolio_value: 0, overall_gain_loss: 0, last_updated: null } });
 
     // --- YOUR API CALLS ---
     const loadData = useCallback(async () => {
+        setIsLoading(true);
         try {
             const [sumRes, userRes, portRes] = await Promise.all([
                 api.get('/summary'),
@@ -29,6 +31,8 @@ export default function Dashboard() {
             setPortfolio(portRes.data);
         } catch (err) { 
             console.error("Error loading dashboard", err); 
+        } finally {
+            setIsLoading(false);
         }
     }, []);
 
@@ -54,6 +58,20 @@ export default function Dashboard() {
 
     if (!isAuth) return <div className="p-10 text-center font-bold text-[#1B3C53]">Loading Dashboard...</div>;
 
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-4 border-[#234C6A] border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-[#1B3C53] font-bold">Fetching live market data...</p>
+            </div>
+        );
+    }
+
+    const formatTimestamp = (isoString) => {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        return date.toLocaleString();
+    };
     return (
         <div className="min-h-screen bg-[#F0F2F5]">
             {/* --- MAIN CONTENT AREA --- */}
@@ -61,7 +79,14 @@ export default function Dashboard() {
                 
                 {/* Header (Dynamic User Data) */}
                 <header className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-bold text-[#1B3C53]">Dashboard</h1>
+                    <div>
+                        <h1 className="text-3xl font-bold text-[#1B3C53]">Dashboard</h1>
+                        {(portfolio.overview?.last_updated || summary.last_updated) && (
+                            <p className="text-sm text-gray-500 mt-1">
+                                Last Updated: {formatTimestamp(portfolio.overview?.last_updated || summary.last_updated)}
+                            </p>
+                        )}
+                    </div>
                     <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-[#234C6A] rounded-full flex items-center justify-center text-white font-bold uppercase">
                             {user.name ? user.name[0] : 'U'}

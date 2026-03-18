@@ -1,40 +1,28 @@
-<<<<<<< HEAD
-# ==============================================
 # Personal Wealth Management - Git Ignore
-# ==============================================
 
-# -----------------------------------------
 # Node.js / JavaScript
-# -----------------------------------------
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 .npm
 .yarn
 
-# -----------------------------------------
 # Build outputs
-# -----------------------------------------
 dist/
 dist-ssr/
 build/
 .vite/
 *.local
 
-# -----------------------------------------
-# Environment files (IMPORTANT - Keep secrets out!)
-# -----------------------------------------
+# Environment files
 .env
 .env.local
 .env.*.local
 *.env
 
-# -----------------------------------------
 # Python
-# -----------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -46,20 +34,15 @@ env/
 ENV/
 .venv/
 pip-log.txt
-pip-delete-this-directory.txt
 .mypy_cache/
 .pytest_cache/
 
-# -----------------------------------------
 # Database files
-# -----------------------------------------
 *.db
 *.sqlite3
 *.sqlite
 
-# -----------------------------------------
 # IDE / Editor
-# -----------------------------------------
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -73,9 +56,7 @@ pip-delete-this-directory.txt
 *.swo
 *~
 
-# -----------------------------------------
 # OS files
-# -----------------------------------------
 .DS_Store
 .DS_Store?
 ._*
@@ -85,24 +66,18 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# -----------------------------------------
 # Logs
-# -----------------------------------------
 logs/
 *.log
 
-# -----------------------------------------
 # Test / Coverage
-# -----------------------------------------
 coverage/
 .coverage
 htmlcov/
 .tox/
 .nox/
 
-# -----------------------------------------
 # Misc
-# -----------------------------------------
 *.tgz
 *.cache
 .cache/

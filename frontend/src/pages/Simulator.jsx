@@ -66,16 +66,24 @@ function Simulator() {
         return value;
     };
 
+    const getErrorMessage = (error, fallbackMessage) => {
+        return error?.response?.data?.detail || fallbackMessage;
+    };
+
+    const normalizeSimulationResult = (data) => {
+        return data?.results || data;
+    };
+
     // Calculate SIP
     const handleSIPCalculate = async () => {
         setLoading(true);
         try {
-            const response = await api.post('/api/simulations/calculate/sip', {
+            const response = await api.post('/api/simulations/sip', {
                 monthly_investment: parseFloat(sipForm.monthly_investment),
                 years: parseInt(sipForm.years),
                 expected_return_rate: parseFloat(sipForm.expected_return_rate)
             });
-            setSipResult(response.data);
+            setSipResult(normalizeSimulationResult(response.data));
         } catch (error) {
             console.error('SIP calculation error:', error);
             // Fallback to local calculation if API fails
@@ -123,7 +131,7 @@ function Simulator() {
     const handleRetirementCalculate = async () => {
         setLoading(true);
         try {
-            const response = await api.post('/api/simulations/calculate/retirement', {
+            const response = await api.post('/api/simulations/retirement', {
                 current_age: parseInt(retirementForm.current_age),
                 retirement_age: parseInt(retirementForm.retirement_age),
                 current_savings: parseFloat(retirementForm.current_savings),
@@ -133,10 +141,21 @@ function Simulator() {
                 inflation_rate: parseFloat(retirementForm.inflation_rate),
                 monthly_expense_at_retirement: parseFloat(retirementForm.monthly_expense_at_retirement)
             });
-            setRetirementResult(response.data);
+            setRetirementResult(normalizeSimulationResult(response.data));
         } catch (error) {
             console.error('Retirement calculation error:', error);
-            alert('Calculation failed. Please check your inputs.');
+            const fallback = calculateRetirementLocally(
+                parseInt(retirementForm.current_age),
+                parseInt(retirementForm.retirement_age),
+                parseFloat(retirementForm.current_savings),
+                parseFloat(retirementForm.monthly_contribution),
+                parseFloat(retirementForm.expected_return_rate),
+                parseFloat(retirementForm.post_retirement_return_rate),
+                parseFloat(retirementForm.inflation_rate),
+                parseFloat(retirementForm.monthly_expense_at_retirement)
+            );
+            setRetirementResult(fallback);
+            console.warn(getErrorMessage(error, 'Retirement calculation used local fallback.'));
         }
         setLoading(false);
     };
@@ -145,18 +164,131 @@ function Simulator() {
     const handleLoanCalculate = async () => {
         setLoading(true);
         try {
-            const response = await api.post('/api/simulations/calculate/loan', {
+            const response = await api.post('/api/simulations/loan', {
                 principal: parseFloat(loanForm.principal),
                 annual_interest_rate: parseFloat(loanForm.annual_interest_rate),
                 loan_term_months: parseInt(loanForm.loan_term_months),
                 extra_monthly_payment: parseFloat(loanForm.extra_monthly_payment)
             });
-            setLoanResult(response.data);
+            setLoanResult(normalizeSimulationResult(response.data));
         } catch (error) {
             console.error('Loan calculation error:', error);
-            alert('Calculation failed. Please check your inputs.');
+            const fallback = calculateLoanLocally(
+                parseFloat(loanForm.principal),
+                parseFloat(loanForm.annual_interest_rate),
+                parseInt(loanForm.loan_term_months),
+                parseFloat(loanForm.extra_monthly_payment)
+            );
+            setLoanResult(fallback);
+            console.warn(getErrorMessage(error, 'Loan calculation used local fallback.'));
         }
         setLoading(false);
+    };
+
+    const calculateRetirementLocally = (
+        currentAge,
+        retirementAge,
+        currentSavings,
+        monthlyContribution,
+        expectedReturnRate,
+        postRetirementReturnRate,
+        inflationRate,
+        monthlyExpenseAtRetirement
+    ) => {
+        const yearsUntilRetirement = Math.max(0, retirementAge - currentAge);
+        const monthlyRate = expectedReturnRate / 100 / 12;
+
+        let corpus = currentSavings;
+        let totalInvested = currentSavings;
+        const yearlyProjections = [];
+
+        for (let year = 1; year <= yearsUntilRetirement; year++) {
+            for (let month = 0; month < 12; month++) {
+                corpus += monthlyContribution;
+                corpus *= (1 + monthlyRate);
+                totalInvested += monthlyContribution;
+            }
+
+            yearlyProjections.push({
+                age: currentAge + year,
+                year,
+                invested: Math.round(totalInvested * 100) / 100,
+                corpus: Math.round(corpus * 100) / 100,
+                phase: 'accumulation'
+            });
+        }
+
+        const inflationMultiplier = Math.pow(1 + inflationRate / 100, yearsUntilRetirement);
+        const inflationAdjustedExpense = monthlyExpenseAtRetirement * inflationMultiplier;
+        const monthlyIncomeAtRetirement = corpus * 0.04 / 12;
+
+        return {
+            years_until_retirement: yearsUntilRetirement,
+            corpus_at_retirement: Math.round(corpus * 100) / 100,
+            total_invested: Math.round(totalInvested * 100) / 100,
+            total_returns: Math.round((corpus - totalInvested) * 100) / 100,
+            monthly_income_at_retirement: Math.round(monthlyIncomeAtRetirement * 100) / 100,
+            corpus_lasts_until_age: retirementAge,
+            inflation_adjusted_expense: Math.round(inflationAdjustedExpense * 100) / 100,
+            yearly_projections: yearlyProjections
+        };
+    };
+
+    const calculateLoanLocally = (principal, annualRate, termMonths, extraPayment = 0) => {
+        const monthlyRate = annualRate / 100 / 12;
+
+        let emi;
+        if (monthlyRate > 0) {
+            emi = principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths) /
+                (Math.pow(1 + monthlyRate, termMonths) - 1);
+        } else {
+            emi = principal / termMonths;
+        }
+
+        const standardTotal = emi * termMonths;
+        const standardInterest = standardTotal - principal;
+
+        let balance = principal;
+        let totalPaid = 0;
+        let totalInterest = 0;
+        let monthsPaid = 0;
+        const amortization = [];
+
+        while (balance > 0 && monthsPaid < termMonths * 2) {
+            monthsPaid += 1;
+            const interestPayment = balance * monthlyRate;
+            const principalPayment = Math.min(emi - interestPayment + extraPayment, balance);
+            const actualPayment = interestPayment + principalPayment;
+
+            balance -= principalPayment;
+            totalPaid += actualPayment;
+            totalInterest += interestPayment;
+
+            // Match backend pattern: monthly points for year 1, then yearly snapshots
+            if (monthsPaid <= 12 || monthsPaid % 12 === 0) {
+                amortization.push({
+                    month: monthsPaid,
+                    payment: Math.round(actualPayment * 100) / 100,
+                    principal: Math.round(principalPayment * 100) / 100,
+                    interest: Math.round(interestPayment * 100) / 100,
+                    balance: Math.round(Math.max(0, balance) * 100) / 100
+                });
+            }
+        }
+
+        const interestSaved = standardInterest - totalInterest;
+        const monthsSaved = termMonths - monthsPaid;
+
+        return {
+            monthly_payment: Math.round((emi + extraPayment) * 100) / 100,
+            total_payment: Math.round(totalPaid * 100) / 100,
+            total_interest: Math.round(totalInterest * 100) / 100,
+            payoff_months: monthsPaid,
+            payoff_date: 'Calculated',
+            interest_saved_with_extra: Math.round(Math.max(0, interestSaved) * 100) / 100,
+            months_saved_with_extra: Math.max(0, monthsSaved),
+            amortization_schedule: amortization
+        };
     };
 
     // Export functionality - PDF Generation
@@ -925,7 +1057,13 @@ Generated via Wealth Tracker • ${timestamp}`;
                         {/* SIP Results */}
                         {activeTab === 'sip' && (
                             <>
-                                {sipResult ? (
+                                {loading ? (
+                                    <div className="bg-white rounded-xl shadow-sm p-12 border border-gray-200 flex flex-col items-center justify-center h-full">
+                                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                        <p className="text-lg font-medium text-gray-700">Running advanced simulations...</p>
+                                        <p className="text-sm text-gray-500">Calculating your financial future</p>
+                                    </div>
+                                ) : sipResult ? (
                                     <>
                                         {/* Result Cards */}
                                         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -969,7 +1107,13 @@ Generated via Wealth Tracker • ${timestamp}`;
                         {/* Retirement Results */}
                         {activeTab === 'retirement' && (
                             <>
-                                {retirementResult ? (
+                                {loading ? (
+                                    <div className="bg-white rounded-xl shadow-sm p-12 border border-gray-200 flex flex-col items-center justify-center h-full">
+                                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                        <p className="text-lg font-medium text-gray-700">Running advanced simulations...</p>
+                                        <p className="text-sm text-gray-500">Calculating your financial future</p>
+                                    </div>
+                                ) : retirementResult ? (
                                     <>
                                         {/* Result Cards */}
                                         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -1025,7 +1169,13 @@ Generated via Wealth Tracker • ${timestamp}`;
                         {/* Loan Results */}
                         {activeTab === 'loan' && (
                             <>
-                                {loanResult ? (
+                                {loading ? (
+                                    <div className="bg-white rounded-xl shadow-sm p-12 border border-gray-200 flex flex-col items-center justify-center h-full">
+                                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                        <p className="text-lg font-medium text-gray-700">Running advanced simulations...</p>
+                                        <p className="text-sm text-gray-500">Calculating your financial future</p>
+                                    </div>
+                                ) : loanResult ? (
                                     <>
                                         {/* Result Cards */}
                                         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -1083,31 +1233,6 @@ Generated via Wealth Tracker • ${timestamp}`;
                 </div>
             </div>
 
-            {/* Footer */}
-            <footer className="bg-[#003366] text-white py-6 mt-auto">
-                <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
-                            <span className="text-[#003366] font-bold text-xs">📊</span>
-                        </div>
-                        <span className="font-medium">Infosys FinCalc</span>
-                    </div>
-                    <div className="flex gap-4">
-                        <a href="#" className="text-gray-300 hover:text-white">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
-                        </a>
-                        <a href="#" className="text-gray-300 hover:text-white">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                        </a>
-                        <a href="#" className="text-gray-300 hover:text-white">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                        </a>
-                    </div>
-                </div>
-                <div className="text-center text-gray-400 text-sm mt-4">
-                    © 2026 Infosys FinCalc. All rights reserved.
-                </div>
-            </footer>
         </div>
     );
 }

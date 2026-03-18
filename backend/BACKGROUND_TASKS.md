@@ -14,9 +14,40 @@ The application uses **Celery** with **Redis** as the message broker to handle b
 
 1. **Redis Server** - Required as the Celery message broker
 2. **Python dependencies** - Install via pip
+3. **Alpha Vantage API key** - Optional but recommended for market prices
 
 ```bash
 pip install celery redis yfinance
+```
+
+### Alpha Vantage Setup (One-Time)
+
+Inside `backend/.env`, set one of these once:
+
+```bash
+ALPHA_VANTAGE_KEY=your_real_key
+# or
+ALPHA_VANTAGE_API_KEY=your_real_key
+```
+
+After this, all scheduled/manual refresh tasks use the key automatically. No per-run input is required.
+
+### Quick No-Prompt Commands (Windows)
+
+From the `backend` folder:
+
+PowerShell:
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\check_market_provider_status.ps1
+powershell -ExecutionPolicy Bypass -File .\trigger_market_refresh.ps1
+```
+
+CMD:
+
+```bash
+check_market_provider_status.bat
+trigger_market_refresh.bat
 ```
 
 ## Setup Instructions

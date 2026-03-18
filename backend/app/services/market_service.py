@@ -3,13 +3,23 @@ import os, requests, yfinance as yf, time, sqlite3
 from datetime import datetime
 
 load_dotenv()
-ALPHA_KEY = os.getenv('ALPHA_VANTAGE_KEY')
+
+
+def get_alpha_vantage_key() -> str:
+    """Read Alpha Vantage API key from either supported env variable name."""
+    return (
+        os.getenv('ALPHA_VANTAGE_KEY')
+        or os.getenv('ALPHA_VANTAGE_API_KEY')
+        or ''
+    )
 
 def get_price(symbol: str):
     """Alpha Vantage → Yahoo Finance fallback"""
-    if ALPHA_KEY and ALPHA_KEY != 'demo':
+    alpha_key = get_alpha_vantage_key()
+
+    if alpha_key and alpha_key != 'demo':
         try:
-            url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_KEY}"
+            url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={alpha_key}"
             data = requests.get(url).json()
             return float(data["Global Quote"]["05. price"])
         except:

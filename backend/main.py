@@ -11,7 +11,7 @@ from jose import jwt, JWTError
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import requests
-from datetime import date
+from datetime import date, datetime
 # --- FIXED INTERNAL MODULE IMPORTS ---
 import models
 import schemas
@@ -37,6 +37,32 @@ from app.services.tasks import run_simulation_task
 # ---------------------------------------------------------
 models.Base.metadata.create_all(bind=engine)
 
+# Auto-migrate: add any missing columns that were added after initial DB creation
+def _run_migrations():
+    import sqlite3, os
+    db_path = os.path.join(os.path.dirname(__file__), "users.db")
+    if not os.path.exists(db_path):
+        return
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    # Assets table - columns added in later versions
+    assets_migrations = {
+        "current_value": "REAL",
+        "last_price": "REAL",
+        "last_price_at": "TIMESTAMP",
+        "company_name": "TEXT",
+        "asset_class": "TEXT DEFAULT 'Stock'",
+    }
+    cursor.execute("PRAGMA table_info(assets)")
+    existing = {row[1] for row in cursor.fetchall()}
+    for col, col_type in assets_migrations.items():
+        if col not in existing:
+            cursor.execute(f"ALTER TABLE assets ADD COLUMN {col} {col_type}")
+    conn.commit()
+    conn.close()
+
+_run_migrations()
+
 app = FastAPI()
 
 # ---------------------------------------------------------
@@ -44,17 +70,10 @@ app = FastAPI()
 # ---------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "http://localhost:3000", 
-        "http://localhost:5174",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],  
-    allow_credentials=True,
-    allow_methods=["*"],  
-    allow_headers=["*"],  
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -129,6 +148,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 def root():
     return {"message": "Wealth Backend Running!"}
 
+
 @app.post("/register")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(models.User).filter(models.User.email == user.email).first()
@@ -156,6 +176,7 @@ def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 # --- TEAMMATE'S FEATURE: GITHUB PR FETCH ---
 @app.get("/api/github/prs")
@@ -533,7 +554,8 @@ def get_portfolio_overview(db: Session = Depends(get_db), user: models.User = De
             "values": values,
             "percentages": percentages,
             "colors": colors
-        }
+        },
+        "last_updated": datetime.utcnow().isoformat() + "Z"
     }
 
 
@@ -553,10 +575,17 @@ def get_portfolio_positions(
     
     positions = []
     for asset in assets:
+        is_live_status = False
+        last_upd = None
         try:
             ticker = yf.Ticker(asset.symbol)
             history = ticker.history(period="1d")
-            current_price = float(history['Close'].iloc[-1]) if not history.empty else asset.buy_price
+            if not history.empty:
+                current_price = float(history['Close'].iloc[-1])
+                is_live_status = True
+                last_upd = datetime.utcnow().isoformat() + "Z"
+            else:
+                current_price = asset.buy_price
         except Exception:
             current_price = asset.buy_price
         
@@ -575,7 +604,9 @@ def get_portfolio_positions(
             "current_price": round(current_price, 2),
             "market_value": round(market_value, 2),
             "gain_loss": round(gain_loss, 2),
-            "gain_loss_percent": round(gain_loss_percent, 2)
+            "gain_loss_percent": round(gain_loss_percent, 2),
+            "is_live": is_live_status,
+            "last_updated": last_upd
         })
     
     total_pages = (total + limit - 1) // limit
@@ -603,6 +634,8 @@ def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get
     performance_today = 0
 
     for asset in assets:
+        is_live_status = False
+        last_upd = None
         # Fetch live price from yfinance
         try:
             ticker = yf.Ticker(asset.symbol)
@@ -610,9 +643,13 @@ def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get
             if len(history) >= 2:
                 current_price = float(history['Close'].iloc[-1])
                 prev_close = float(history['Close'].iloc[-2])
+                is_live_status = True
+                last_upd = datetime.utcnow().isoformat() + "Z"
             elif len(history) == 1:
                 current_price = float(history['Close'].iloc[-1])
                 prev_close = current_price
+                is_live_status = True
+                last_upd = datetime.utcnow().isoformat() + "Z"
             else:
                 current_price = asset.buy_price
                 prev_close = asset.buy_price
@@ -636,7 +673,9 @@ def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get
             "current_price": round(current_price, 2),
             "market_value": round(market_value, 2),
             "gain_loss": round(gain_loss, 2),
-            "gain_loss_percent": round(gain_loss_percent, 2)
+            "gain_loss_percent": round(gain_loss_percent, 2),
+            "is_live": is_live_status,
+            "last_updated": last_upd
         })
 
         total_cost_basis += cost_basis
@@ -655,7 +694,8 @@ def get_portfolio(db: Session = Depends(get_db), user: models.User = Depends(get
             "overall_gain_loss": round(overall_gain_loss, 2),
             "overall_gain_loss_percent": round(overall_gain_loss_percent, 2),
             "performance_today": round(performance_today, 2),
-            "performance_today_percent": round(performance_today_percent, 2)
+            "performance_today_percent": round(performance_today_percent, 2),
+            "last_updated": datetime.utcnow().isoformat() + "Z"
         }
     }
 
@@ -727,7 +767,12 @@ def get_summary(db: Session = Depends(get_db), user: models.User = Depends(get_c
             expense += abs(t.amount) if t.amount else 0
     
     balance = income - expense
-    return {"balance": round(balance, 2), "income": round(income, 2), "expense": round(expense, 2)}
+    return {
+        "balance": round(balance, 2), 
+        "income": round(income, 2), 
+        "expense": round(expense, 2),
+        "last_updated": datetime.utcnow().isoformat() + "Z"
+    }
 
 @app.get("/recommendations/")
 def get_recommendations(risk: str):
@@ -740,20 +785,66 @@ def get_recommendations(risk: str):
 
 @app.post("/simulate/start/")
 def start_simulation(monthly_investment: float, years: int):
-    task = run_simulation_task.delay(monthly_investment, years, 0.07)
-    return {"task_id": task.id}
+    # Run synchronously (no Redis/Celery required)
+    import uuid
+    task_id = str(uuid.uuid4())
+    result = _run_simulation_sync(monthly_investment, years, 0.07)
+    _simulation_cache[task_id] = result
+    return {"task_id": task_id}
+
+# In-memory cache for synchronous simulation results (fallback when Redis/Celery unavailable)
+_simulation_cache: dict = {}
+
+def _run_simulation_sync(monthly_investment: float, years: int, interest_rate: float) -> dict:
+    total_value = 0.0
+    year_by_year = []
+    for year in range(1, years + 1):
+        for _ in range(12):
+            total_value += monthly_investment
+            total_value += total_value * (interest_rate / 12)
+        year_by_year.append({"year": year, "value": round(total_value, 2)})
+    total_invested = monthly_investment * 12 * years
+    return {
+        "total_wealth": round(total_value, 2),
+        "total_invested": round(total_invested, 2),
+        "estimated_profit": round(total_value - total_invested, 2),
+        "year_by_year": year_by_year
+    }
 
 @app.get("/simulate/result/{task_id}")
 def get_simulation_result(task_id: str):
-    res = AsyncResult(task_id, app=celery_app)
-    if res.state == 'SUCCESS': return {"status": "Completed", "result": res.result}
+    # All results are stored in the in-memory cache (no Celery/Redis needed)
+    if task_id in _simulation_cache:
+        return {"status": "Completed", "result": _simulation_cache[task_id]}
     return {"status": "Processing..."}
+
+@app.post("/simulations")
+def save_simulation(
+    payload: schemas.SaveSimulationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Save a simulation result from the Simulator page."""
+    sim = models.Simulation(
+        user_id=current_user.id,
+        scenario_name=f"SIP Simulation - ${payload.monthly_investment}/mo x {payload.years}yr",
+        assumptions={
+            "monthly_investment": payload.monthly_investment,
+            "years": payload.years,
+            "interest_rate": 0.07
+        },
+        results=payload.result or {}
+    )
+    db.add(sim)
+    db.commit()
+    db.refresh(sim)
+    return {"id": sim.id, "message": "Simulation saved successfully"}
 # ---------------------------------------------------------
 # GOALS CRUD
 # ---------------------------------------------------------
 
 @app.post("/goals")
-def create_goal(goal: schemas.GoalCreate, db: Session = Depends(get_db)):
+def create_goal(goal: schemas.GoalCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     from datetime import datetime
     target_date_parsed = None
     if goal.target_date:
@@ -763,7 +854,7 @@ def create_goal(goal: schemas.GoalCreate, db: Session = Depends(get_db)):
             pass
     
     db_goal = models.Goal(
-        user_id=1,  # Hardcoded for testing - replace with current_user.id
+        user_id=current_user.id, 
         goal_name=goal.goal_name,
         goal_type=goal.goal_type,
         target_amount=goal.target_amount,
@@ -795,10 +886,11 @@ def get_goals(
     search: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
-    """Get paginated goals with optional search and filters"""
-    query = db.query(models.Goal)
+    """Get paginated goals for the current user with optional search and filters"""
+    query = db.query(models.Goal).filter(models.Goal.user_id == current_user.id)
     
     # Apply search filter on goal_name
     if search:
@@ -843,8 +935,8 @@ def get_goals(
 
 
 @app.get("/goals/{goal_id}")
-def get_single_goal(goal_id: int, db: Session = Depends(get_db)):
-    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+def get_single_goal(goal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     
@@ -862,9 +954,9 @@ def get_single_goal(goal_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/goals/{goal_id}")
-def update_goal(goal_id: int, goal_update: schemas.GoalUpdate, db: Session = Depends(get_db)):
+def update_goal(goal_id: int, goal_update: schemas.GoalUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     from datetime import datetime
-    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     
@@ -902,8 +994,8 @@ def update_goal(goal_id: int, goal_update: schemas.GoalUpdate, db: Session = Dep
 
 
 @app.delete("/goals/{goal_id}")
-def delete_goal(goal_id: int, db: Session = Depends(get_db)):
-    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+def delete_goal(goal_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     db.delete(goal)
@@ -929,6 +1021,21 @@ def trigger_full_price_refresh():
         "message": "Price refresh task started",
         "task_id": task.id,
         "status_url": f"/api/refresh/status/{task.id}"
+    }
+
+
+@app.get("/api/market/provider-status")
+def get_market_provider_status():
+    """
+    Report market-data provider configuration without exposing secrets.
+    """
+    key = os.getenv("ALPHA_VANTAGE_KEY") or os.getenv("ALPHA_VANTAGE_API_KEY")
+    alpha_vantage_configured = bool(key and key != "demo")
+
+    return {
+        "alpha_vantage_configured": alpha_vantage_configured,
+        "active_provider_mode": "alpha_vantage_with_yfinance_fallback" if alpha_vantage_configured else "yfinance_fallback_only",
+        "note": "Set ALPHA_VANTAGE_KEY or ALPHA_VANTAGE_API_KEY in backend/.env and restart backend/celery."
     }
 
 
@@ -1635,4 +1742,10 @@ def delete_simulation(
 
 @app.post("/api/market-refresh")
 def refresh_prices():
-    return {"status": "success", "message": "Run: python update_prices.py (Alpha Vantage)"}
+    task = refresh_all_asset_prices.delay()
+    return {
+        "status": "success",
+        "message": "Market refresh task started",
+        "task_id": task.id,
+        "status_url": f"/api/refresh/status/{task.id}"
+    }
