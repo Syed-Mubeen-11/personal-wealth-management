@@ -5,26 +5,27 @@ export const getProfile = async () => {
   return response.data;
 };
 
-export const saveProfile = async (formData, isUpdate) => {
-  // We prepare the specific Multipart/Form-Data request
-  const config = {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  };
-
+export const updateProfile = async (formData) => {
   const data = new FormData();
+  
+  // Append basic details
   data.append('age', formData.age);
   data.append('address', formData.address);
   
-  // Only append photo if a new one was selected
-  if (formData.profile_photo) {
+  // Append new KYC and Risk fields
+  data.append('aadhaar_no', formData.aadhaar_no);
+  data.append('pan_no', formData.pan_no);
+  data.append('investment_risk', formData.investment_risk);
+
+  // Only append photo if a new file was actually selected
+  if (formData.profile_photo instanceof File) {
     data.append('profile_photo', formData.profile_photo);
   }
 
-  if (isUpdate) {
-    const response = await API.put('/profile', data, config);
-    return response.data;
-  } else {
-    const response = await API.post('/profile', data, config);
-    return response.data;
-  }
+  // Since the profile is created at registration, we only use PUT
+  const response = await API.put('/profile', data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  
+  return response.data;
 };

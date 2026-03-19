@@ -15,22 +15,24 @@ class User(Base):
     password = Column(String)
 
     profile = relationship("UserProfile", back_populates="user", uselist=False)
-    risk_profile = Column(String, default="moderate")
 
 
 class UserProfile(Base):
-
     __tablename__ = "user_profiles"
 
     id = Column(Integer, primary_key=True, index=True)
-
     user_id = Column(Integer, ForeignKey("users.id"))
-
+    
     age = Column(Integer)
-
     address = Column(String)
-
     profile_photo = Column(String)
+    
+    aadhaar_no = Column(String, nullable=True)
+    pan_no = Column(String, nullable=True)
+    kyc_status = Column(String, default="not-submitted")
+    
+    investment_risk = Column(String, default="pending")
+    risk_profile = Column(String, default="pending")
 
     user = relationship("User", back_populates="profile")
 

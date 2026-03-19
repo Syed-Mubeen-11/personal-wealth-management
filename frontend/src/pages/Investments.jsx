@@ -6,24 +6,25 @@ const Investments = () => {
   const [investments, setInvestments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  
+  // Updated state to include trade_type and fees
   const [formData, setFormData] = useState({
     asset_type: 'Stock',
     symbol: '',
     units: '',
-    avg_buy_price: ''
+    avg_buy_price: '',
+    trade_type: 'buy', 
+    fees: 0
   });
 
   const fetchPortfolio = async () => {
     try {
       setFetchLoading(true);
       const response = await getPortfolio();
-      console.log("Debug - Portfolio API Response:", response);
-
-      // Handle both flat arrays and nested summary objects
+      
       if (Array.isArray(response)) {
         setInvestments(response);
       } else if (response && typeof response === 'object') {
-        // Look for common keys if it's a summary object
         const list = response.investments || response.assets || response.data || [];
         setInvestments(Array.isArray(list) ? list : []);
       }
@@ -38,31 +39,37 @@ const Investments = () => {
     fetchPortfolio();
   }, []);
 
-  // FIXED: handleSubmit defined properly inside the component
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Payload now matches the updated InvestmentCreate schema
       const payload = {
         asset_type: formData.asset_type,
-        symbol: formData.symbol,
+        symbol: formData.symbol.toUpperCase(),
         units: parseFloat(formData.units),
-        avg_buy_price: parseFloat(formData.avg_buy_price)
+        avg_buy_price: parseFloat(formData.avg_buy_price),
+        trade_type: formData.trade_type,
+        fees: parseFloat(formData.fees || 0)
       };
       
       await addInvestment(payload);
-      setFormData({ asset_type: 'Stock', symbol: '', units: '', avg_buy_price: '' });
-      await fetchPortfolio(); // Refresh the table
-      alert("Investment added successfully!");
+      
+      // Reset form but keep asset_type and trade_type preference
+      setFormData({ ...formData, symbol: '', units: '', avg_buy_price: '', fees: 0 });
+      await fetchPortfolio(); 
+      alert(`${payload.trade_type.toUpperCase()} order successful!`);
     } catch (err) {
-      alert("Error adding investment: " + String(err));
+      // Capture the "Insufficient units" error from FastAPI
+      const errorMsg = err.response?.data?.detail || String(err);
+      alert("Trade Failed: " + errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to remove this asset?")) {
+    if (window.confirm("Are you sure you want to remove this asset? (This deletes the record entirely)")) {
       try {
         await deleteInvestment(id);
         fetchPortfolio();
@@ -80,8 +87,25 @@ const Investments = () => {
 
         {/* Form Section */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
-          <h2 className="text-sm font-bold text-gray-500 uppercase mb-4">Add New Asset</h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-sm font-bold text-gray-500 uppercase">Manage Assets</h2>
+            
+            {/* BUY/SELL Toggle */}
+            <div className="flex bg-gray-100 p-1 rounded-xl">
+              <button 
+                type="button"
+                onClick={() => setFormData({...formData, trade_type: 'buy'})}
+                className={`px-4 py-1 rounded-lg text-xs font-bold transition ${formData.trade_type === 'buy' ? 'bg-green-600 text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}
+              >BUY</button>
+              <button 
+                type="button"
+                onClick={() => setFormData({...formData, trade_type: 'sell'})}
+                className={`px-4 py-1 rounded-lg text-xs font-bold transition ${formData.trade_type === 'sell' ? 'bg-red-600 text-white shadow' : 'text-gray-500 hover:text-gray-700'}`}
+              >SELL</button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <select 
               className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
               value={formData.asset_type}
@@ -93,29 +117,44 @@ const Investments = () => {
               <option value="Mutual Fund">Mutual Fund</option>
             </select>
             <input 
-              type="text" placeholder="Symbol (e.g. AAPL)" required
+              type="text" placeholder="Symbol" required
               className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
               value={formData.symbol}
               onChange={(e) => setFormData({...formData, symbol: e.target.value.toUpperCase()})}
             />
+            
             <input 
               type="number" placeholder="Units" step="any" required
               className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
               value={formData.units}
               onChange={(e) => setFormData({...formData, units: e.target.value})}
             />
+            
             <input 
-              type="number" placeholder="Avg Price" step="any" required
+              type="number" placeholder="Price" step="any" required
               className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
               value={formData.avg_buy_price}
               onChange={(e) => setFormData({...formData, avg_buy_price: e.target.value})}
             />
+
+            <input 
+              type="number" 
+              placeholder="Fees (Optional)" 
+              step="any"
+              className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+              // If fees is 0 or empty, show empty string so placeholder appears
+              value={formData.fees === 0 ? '' : formData.fees}
+              onChange={(e) => setFormData({...formData, fees: e.target.value})}
+            />
+
             <button 
               disabled={loading} 
               type="submit"
-              className="bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition disabled:bg-gray-400"
+              className={`font-bold rounded-lg text-white transition disabled:bg-gray-400 ${
+                formData.trade_type === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+              }`}
             >
-              {loading ? 'Processing...' : 'Add Asset'}
+              {loading ? 'Processing...' : formData.trade_type === 'buy' ? 'Add Units' : 'Sell Units'}
             </button>
           </form>
         </div>
@@ -130,7 +169,7 @@ const Investments = () => {
                 <tr>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Asset</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Qty</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Cost Basis</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Avg Price</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Current Value</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
                 </tr>
@@ -143,11 +182,25 @@ const Investments = () => {
                       <div className="text-xs text-gray-400">{inv.asset_type}</div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">{inv.units}</td>
-                    <td className="px-6 py-4 text-gray-600">₹{Number(inv.cost_basis).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-gray-600">₹{Number(inv.avg_buy_price).toLocaleString()}</td>
                     <td className="px-6 py-4 font-semibold text-gray-800">₹{Number(inv.current_value).toLocaleString()}</td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => handleDelete(inv.id)} className="text-red-400 hover:text-red-600 font-medium">
-                        Remove
+                      <button 
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            symbol: inv.symbol,
+                            asset_type: inv.asset_type,
+                            trade_type: 'sell'
+                          });
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="text-indigo-600 hover:text-indigo-800 font-medium mr-4"
+                      >
+                        Trade
+                      </button>
+                      <button onClick={() => handleDelete(inv.id)} className="text-red-300 hover:text-red-600 font-medium">
+                        Delete
                       </button>
                     </td>
                   </tr>

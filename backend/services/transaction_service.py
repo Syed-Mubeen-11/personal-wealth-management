@@ -1,4 +1,6 @@
 from models.transaction_model import Transaction
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 
 def create_transaction(db, user_id, data):
@@ -19,8 +21,7 @@ def create_transaction(db, user_id, data):
     return transaction
 
 
-def get_transactions(db, user_id):
-
+def get_transactions(db: Session, user_id: int):
     return db.query(Transaction).filter(
         Transaction.user_id == user_id
-    ).all()
+    ).order_by(desc(Transaction.id)).all()

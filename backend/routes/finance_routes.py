@@ -48,7 +48,7 @@ def get_incomes(
 ):
     return db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
 
-@router.delete("/api/income/{income_id}")
+@router.delete("/income/{income_id}")
 def delete_income(
     income_id: int,
     db: Session = Depends(get_db),
@@ -91,6 +91,24 @@ def get_expenses(
 ):
     return db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
 
+@router.delete("/expenses/{expense_id}")
+def delete_expense(
+    expense_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
+    expense = db.query(models.Expense).filter(
+        models.Expense.id == expense_id, 
+        models.Expense.user_id == current_user.id
+    ).first()
+    
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense record not found")
+        
+    db.delete(expense)
+    db.commit()
+    return {"message": "Expense deleted successfully"}
+
 # --- DASHBOARD / ANALYTICS ---
 
 @router.get("/dashboard")
@@ -129,7 +147,8 @@ def get_dashboard(
     ).all()
 
     total_invested = sum(inv.cost_basis for inv in investments)
-    portfolio_value = sum(inv.current_value for inv in investments)
+    # portfolio_value = sum(inv.current_value for inv in investments)
+    portfolio_value = sum((inv.current_value or 0) for inv in investments)
 
     profit_loss = portfolio_value - total_invested
 
@@ -141,7 +160,8 @@ def get_dashboard(
         if inv.asset_type not in allocation:
             allocation[inv.asset_type] = 0
 
-        allocation[inv.asset_type] += inv.current_value
+        # allocation[inv.asset_type] += inv.current_value
+        allocation[inv.asset_type] += (inv.current_value or 0)
 
     asset_allocation = {}
 

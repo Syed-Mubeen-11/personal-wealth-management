@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-
+from typing import Dict
 
 class UserRegister(BaseModel):
     username: str
@@ -38,9 +38,21 @@ class ProfileResponse(BaseModel):
     age: int
     address: str
     profile_photo: Optional[str]
+    aadhaar_no: Optional[str]
+    pan_no: Optional[str]
+    kyc_status: str
+    investment_risk: str
+    risk_profile: str
 
     class Config:
         from_attributes = True
+
+class ProfileUpdate(BaseModel):
+    age: Optional[int] = None
+    address: Optional[str] = None
+    aadhaar_no: Optional[str] = None
+    pan_no: Optional[str] = None
+    investment_risk: Optional[str] = None
 
 class IncomeCreate(BaseModel):
     source: str
@@ -71,7 +83,12 @@ class ExpenseResponse(BaseModel):
         from_attributes = True
 
 class DashboardResponse(BaseModel):
-    total_income: int
-    total_expenses: int
-    savings: int
-    expense_breakdown: dict
+    total_income: float
+    total_expenses: float
+    savings: float
+    portfolio_value: float
+    total_invested: float
+    profit_loss: float
+    goal_count: int
+    expense_breakdown: Dict[str, float]
+    asset_allocation: Dict[str, float]

@@ -33,9 +33,11 @@ def register_user(user: schemas.UserRegister, db: Session = Depends(get_db)):
     ).first()
 
     if existing_user:
-        raise HTTPException(status_code=400, detail="User with this username, email, or phone already exists")
+        raise HTTPException(status_code=400, detail="User already exists")
 
     hashed_pw = hash_password(user.password)
+    
+    # 1. Create the User
     new_user = models.User(
         username=user.username,
         email=user.email,
@@ -43,8 +45,24 @@ def register_user(user: schemas.UserRegister, db: Session = Depends(get_db)):
         password=hashed_pw
     )
     db.add(new_user)
-    db.commit()
+    db.commit() # Commit here to generate the new_user.id
     db.refresh(new_user)
+
+    # 2. Create the linked UserProfile automatically
+    new_profile = models.UserProfile(
+        user_id=new_user.id,
+        age=0,
+        address="",
+        profile_photo=None,
+        aadhaar_no="",
+        pan_no="",
+        kyc_status="not-submitted",
+        investment_risk="pending",  # As per your update
+        risk_profile="pending"      # As per your update
+    )
+    db.add(new_profile)
+    db.commit()
+
     return new_user
 
 @router.post("/login", response_model=schemas.TokenResponse)
