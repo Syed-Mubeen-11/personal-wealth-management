@@ -6,8 +6,8 @@ from app.schemas.investments import InvestmentCreate, InvestmentResponse, Invest
 from app.models.user import User
 from app.core.auth import get_current_user
 from datetime import datetime
-import yfinance as yf
 from app.services.asset_price import get_asset_price
+from app.tasks.price_refresh import refresh_all_prices
 
 router = APIRouter()
 
@@ -20,20 +20,25 @@ def get_db():
         db.close()
 
 
-#  Create Investment
-@router.post("/investments/")
-def create_investment(data: InvestmentCreate, db: Session = Depends(get_db)):
+@router.post("/")
+def create_investment(
+    data: InvestmentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
 
     price = get_asset_price(data.symbol, data.asset_type)
 
     investment = Investment(
+        user_id=current_user.id,
         symbol=data.symbol,
         asset_type=data.asset_type,
         units=data.units,
         avg_buy_price=data.avg_buy_price,
-        current_price=price,
+        cost_basis=float(data.units) * float(data.avg_buy_price),
+        current_value=float(data.units) * float(price),
         last_price=price,
-        last_price_timestamp=datetime.utcnow()
+        last_price_at=datetime.utcnow()
     )
 
     db.add(investment)
@@ -97,18 +102,8 @@ def update_investment(
     db.refresh(investment)
     return investment
 
-@router.post("/investments/{id}/refresh-price")
-def refresh_price(id: int, db: Session = Depends(get_db)):
 
-    inv = db.query(Investment).filter(Investment.id == id).first()
-
-    new_price = get_asset_price(inv.symbol, inv.asset_type)
-
-    inv.last_price = inv.current_price
-    inv.current_price = new_price
-    inv.last_price_timestamp = datetime.utcnow()
-
-    db.commit()
-    db.refresh(inv)
-
-    return inv
+@router.post("/refresh-prices")
+def refresh_prices():
+    refresh_all_prices.delay()
+    return {"message": "Background refresh started"}

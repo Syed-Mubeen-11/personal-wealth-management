@@ -47,6 +47,6 @@ class User(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
-goals = relationship("Goal", back_populates="user", cascade="all, delete")
-investments = relationship("Investment", back_populates="user", cascade="all, delete")
-transactions = relationship("Transaction", back_populates="user", cascade="all, delete")
+# goals = relationship("Goal", back_populates="user", cascade="all, delete")
+# investments = relationship("Investment", back_populates="user", cascade="all, delete")
+# transactions = relationship("Transaction", back_populates="user", cascade="all, delete")
