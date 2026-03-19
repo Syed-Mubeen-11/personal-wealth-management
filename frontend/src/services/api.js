@@ -16,3 +16,20 @@ API.interceptors.request.use((config) => {
 });
 
 export default API;
+
+// ADD THESE 4 FUNCTIONS at the end of your existing api.js
+export const runSimulation = (goalId, simulationParams) => {
+  return API.post(`/goals/${goalId}/simulate`, simulationParams);
+};
+
+export const saveSimulation = (goalId, simulationData) => {
+  return API.post(`/goals/${goalId}/simulations`, simulationData);
+};
+
+export const getSavedSimulations = (goalId) => {
+  return API.get(`/goals/${goalId}/simulations`);
+};
+
+export const deleteSimulation = (goalId, simulationId) => {
+  return API.delete(`/goals/${goalId}/simulations/${simulationId}`);
+};

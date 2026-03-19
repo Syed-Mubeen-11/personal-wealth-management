@@ -20,14 +20,16 @@ def get_db():
         db.close()
 
 
-@router.post("/")
+#  Create Investment
+@router.post("/", response_model=InvestmentResponse)
 def create_investment(
     data: InvestmentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
     price = get_asset_price(data.symbol, data.asset_type)
+    cost_basis = float(data.units) * float(data.avg_buy_price)
+    current_value = float(data.units) * float(price)
 
     investment = Investment(
         user_id=current_user.id,
@@ -35,8 +37,8 @@ def create_investment(
         asset_type=data.asset_type,
         units=data.units,
         avg_buy_price=data.avg_buy_price,
-        cost_basis=float(data.units) * float(data.avg_buy_price),
-        current_value=float(data.units) * float(price),
+        cost_basis=cost_basis,
+        current_value=current_value,
         last_price=price,
         last_price_at=datetime.utcnow()
     )
@@ -46,6 +48,7 @@ def create_investment(
     db.refresh(investment)
 
     return investment
+
 
 #  Get User Investments
 @router.get("/", response_model=list[InvestmentResponse])
@@ -77,6 +80,8 @@ def delete_investment(
     db.commit()
     return {"message": "Investment deleted"}
 
+
+#  Update Investment
 @router.put("/{investment_id}", response_model=InvestmentResponse)
 def update_investment(
     investment_id: int,
@@ -103,6 +108,35 @@ def update_investment(
     return investment
 
 
+#  Refresh single investment price
+@router.post("/{id}/refresh-price")
+def refresh_price(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    inv = db.query(Investment).filter(
+        Investment.id == id,
+        Investment.user_id == current_user.id
+    ).first()
+
+    if not inv:
+        raise HTTPException(status_code=404, detail="Investment not found")
+
+    new_price = get_asset_price(inv.symbol, inv.asset_type)
+
+    inv.last_price = inv.last_price
+    inv.current_value = float(inv.units) * float(new_price)
+    inv.last_price = new_price
+    inv.last_price_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(inv)
+
+    return inv
+
+
+#  Refresh all prices (Celery)
 @router.post("/refresh-prices")
 def refresh_prices():
     refresh_all_prices.delay()
