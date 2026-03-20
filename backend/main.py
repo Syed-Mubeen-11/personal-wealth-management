@@ -825,15 +825,29 @@ def save_simulation(
     current_user: models.User = Depends(get_current_user)
 ):
     """Save a simulation result from the Simulator page."""
+    simulation_type = (payload.simulation_type or "custom").lower()
+    assumptions = payload.assumptions or {
+        "monthly_investment": payload.monthly_investment,
+        "years": payload.years,
+    }
+
+    scenario_name = payload.scenario_name
+    if not scenario_name:
+        scenario_name = f"{simulation_type.upper()} Simulation"
+
+    results_payload = payload.result or {}
+    if payload.what_if_result is not None:
+        results_payload = {
+            **results_payload,
+            "what_if_result": payload.what_if_result,
+        }
+
     sim = models.Simulation(
         user_id=current_user.id,
-        scenario_name=f"SIP Simulation - ${payload.monthly_investment}/mo x {payload.years}yr",
-        assumptions={
-            "monthly_investment": payload.monthly_investment,
-            "years": payload.years,
-            "interest_rate": 0.07
-        },
-        results=payload.result or {}
+        goal_id=payload.goal_id,
+        scenario_name=scenario_name,
+        assumptions=assumptions,
+        results=results_payload,
     )
     db.add(sim)
     db.commit()
@@ -1030,12 +1044,15 @@ def get_market_provider_status():
     Report market-data provider configuration without exposing secrets.
     """
     key = os.getenv("ALPHA_VANTAGE_KEY") or os.getenv("ALPHA_VANTAGE_API_KEY")
+    yahoo_key = os.getenv("YAHOO_FINANCE_API_KEY")
     alpha_vantage_configured = bool(key and key != "demo")
+    yahoo_configured = bool(yahoo_key)
 
     return {
         "alpha_vantage_configured": alpha_vantage_configured,
-        "active_provider_mode": "alpha_vantage_with_yfinance_fallback" if alpha_vantage_configured else "yfinance_fallback_only",
-        "note": "Set ALPHA_VANTAGE_KEY or ALPHA_VANTAGE_API_KEY in backend/.env and restart backend/celery."
+        "yahoo_finance_configured": yahoo_configured,
+        "active_provider_mode": "yahoo_or_alpha_with_yfinance_fallback" if (alpha_vantage_configured or yahoo_configured) else "yfinance_fallback_only",
+        "note": "Set YAHOO_FINANCE_API_KEY and/or ALPHA_VANTAGE_KEY in backend/.env and restart backend/celery."
     }
 
 

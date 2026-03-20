@@ -35,7 +35,7 @@ export default function Layout({ children }) {
                         <TrendingUp size={20} /> Investments
                     </Link>
                     <Link to="/simulator" className={`flex items-center gap-3 p-3 rounded-lg transition ${isActive('/simulator') ? 'bg-[#234C6A]' : 'text-gray-300 hover:text-white hover:bg-[#234C6A]'}`}>
-                        <Activity size={20} /> Simulator Charts
+                        <Activity size={20} /> Simulator
                     </Link>
                     <Link to="/ai-advice" className={`flex items-center gap-3 p-3 rounded-lg transition ${isActive('/ai-advice') ? 'bg-[#234C6A]' : 'text-gray-300 hover:text-white hover:bg-[#234C6A]'}`}>
                         <Bot size={20} /> AI Advice

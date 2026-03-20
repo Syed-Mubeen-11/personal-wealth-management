@@ -1,10 +1,13 @@
 from celery import Celery
 from celery.schedules import crontab
+import os
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 celery_app = Celery(
     "wealth_tasks",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0"
+    broker=REDIS_URL,
+    backend=REDIS_URL
 )
 
 # FIX: Update the path to the tasks module

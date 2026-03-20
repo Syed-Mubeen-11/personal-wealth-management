@@ -62,7 +62,31 @@ def get_db_session():
 
 
 def fetch_stock_price(symbol: str) -> float:
-    """Fetch stock price using Alpha Vantage first, then yfinance fallback."""
+    """Fetch stock price using Yahoo API key path, then Alpha Vantage, then yfinance fallback."""
+    yahoo_key = os.getenv("YAHOO_FINANCE_API_KEY")
+    yahoo_host = os.getenv("YAHOO_FINANCE_API_HOST", "apidojo-yahoo-finance-v1.p.rapidapi.com")
+
+    if yahoo_key:
+        try:
+            response = requests.get(
+                f"https://{yahoo_host}/stock/v2/get-summary",
+                params={"symbol": symbol, "region": "US"},
+                headers={
+                    "X-RapidAPI-Key": yahoo_key,
+                    "X-RapidAPI-Host": yahoo_host,
+                },
+                timeout=15,
+            )
+            data = response.json() if response.ok else {}
+            price_raw = (
+                data.get("price", {}).get("regularMarketPrice", {}).get("raw")
+                or data.get("price", {}).get("postMarketPrice", {}).get("raw")
+            )
+            if price_raw is not None:
+                return float(price_raw)
+        except Exception as e:
+            logger.warning(f"Yahoo key provider failed for {symbol}: {str(e)}; trying Alpha Vantage")
+
     alpha_key = os.getenv("ALPHA_VANTAGE_KEY") or os.getenv("ALPHA_VANTAGE_API_KEY")
 
     if alpha_key and alpha_key != "demo":

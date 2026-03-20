@@ -76,11 +76,14 @@ function Goals() {
 
   /* Projection logic */
 
-  const previewProjection = () => {
+  const previewProjection = async () => {
     const target = parseFloat(formData.target);
     const contribution = parseFloat(formData.contribution);
 
-    if (!target || !contribution) return;
+    if (!target || !contribution || target <= 0 || contribution <= 0) {
+      alert("Enter valid positive values for target and contribution.");
+      return;
+    }
 
     let monthly = contribution;
 
@@ -88,28 +91,66 @@ function Goals() {
     if (formData.frequency === "Daily") monthly = contribution * 30;
     if (formData.frequency === "Yearly") monthly = contribution / 12;
 
-    let savings = 0;
-    let data = [];
-    let month = 0;
-
-    while (savings < target && month < 600) {
-      month++;
-      savings += monthly;
-
-      data.push({
-        month,
-        value: savings,
-      });
-    }
-
-    setChartData(data);
-    setMonths(month);
-    setRemaining(target - contribution);
-
     const today = new Date();
-    const completion = new Date(today);
-    completion.setMonth(today.getMonth() + month);
-    setCompletionDate(completion.toDateString());
+
+    try {
+      let targetYears = null;
+      if (formData.deadline) {
+        const deadline = new Date(formData.deadline);
+        const monthsLeft =
+          (deadline.getFullYear() - today.getFullYear()) * 12 +
+          (deadline.getMonth() - today.getMonth());
+        if (monthsLeft > 0) {
+          targetYears = Math.max(1, Math.ceil(monthsLeft / 12));
+        }
+      }
+
+      const response = await api.post('/api/simulations/calculate/goal', {
+        target_amount: target,
+        current_savings: 0,
+        monthly_contribution: monthly,
+        expected_return_rate: 8,
+        target_years: targetYears,
+      });
+
+      const result = response.data || {};
+      const yearly = result.yearly_projections || [];
+      const data = yearly.map((item) => ({
+        month: Number(item.year || 0) * 12,
+        value: Number(item.total_value || 0),
+      }));
+
+      setChartData(data);
+      setMonths(result.months_to_goal || (targetYears ? targetYears * 12 : 0));
+      setRemaining(Math.max(0, Number(target - (result.projected_value || 0))));
+
+      const completion = new Date(today);
+      completion.setMonth(today.getMonth() + (result.months_to_goal || 0));
+      setCompletionDate(result.months_to_goal ? completion.toDateString() : "-");
+    } catch (err) {
+      console.error('Goal simulation preview failed, using local fallback:', err);
+
+      let savings = 0;
+      let data = [];
+      let month = 0;
+
+      while (savings < target && month < 600) {
+        month++;
+        savings += monthly;
+        data.push({
+          month,
+          value: savings,
+        });
+      }
+
+      setChartData(data);
+      setMonths(month);
+      setRemaining(Math.max(0, target - savings));
+
+      const completion = new Date(today);
+      completion.setMonth(today.getMonth() + month);
+      setCompletionDate(completion.toDateString());
+    }
 
     /* Suggested contribution */
 

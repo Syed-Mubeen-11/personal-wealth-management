@@ -375,6 +375,13 @@ class PaginatedSimulationsResponse(BaseModel):
 # SAVE SIMULATION (from Simulator page)
 # ---------------------------------------------------------
 class SaveSimulationRequest(BaseModel):
-    monthly_investment: float
-    years: int
+    simulation_type: str
+    scenario_name: Optional[str] = None
+    goal_id: Optional[int] = None
+    assumptions: Optional[Dict[str, Any]] = None
     result: Optional[Dict[str, Any]] = None
+    what_if_result: Optional[Dict[str, Any]] = None
+
+    # Backward-compatibility fields used by older frontend payloads
+    monthly_investment: Optional[float] = None
+    years: Optional[int] = None
