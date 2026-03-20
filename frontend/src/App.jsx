@@ -11,6 +11,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Analytics from './pages/Analytics';
 import Transactions from './pages/Transactions';
 import Profile from './pages/Profile';
+import Simulation from './pages/Simulation';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/simulation" element={<ProtectedRoute><Simulation /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { logout } from '../services/authservice'; // Ensure the path matches your file name
+import { logout } from '../services/authService'; // Ensure the path matches your file name
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -21,6 +21,7 @@ const Sidebar = () => {
     { name: 'Portfolio', path: '/analytics', icon: '📈' },
     { name: 'Trade History', path: '/transactions', icon: '📜' },
     { name: 'Profile', path: '/profile', icon: '👤' },
+    { name: 'Simulation', path: '/simulation', icon: '🧪' },
   ];
 
   return (
