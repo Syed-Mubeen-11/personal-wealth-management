@@ -7,7 +7,8 @@ import StockSearch from "../components/StockSearch";
 function Portfolio() {
 
   const [investments, setInvestments] = useState([]);
-
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [formData, setFormData] = useState({
     symbol: "",
     asset_type: "",
@@ -21,18 +22,22 @@ function Portfolio() {
 
   // ✅ Fetch investments
   const fetchInvestments = async () => {
+    setLoading(true);
     try {
       const res = await axios.get(
         "http://localhost:8000/investments/",
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setInvestments(res.data || []);
+      setLastUpdated(new Date());
     } catch (err) {
       if (err.response && err.response.status === 401) {
         window.location.href = "/login";
       } else {
         console.error("Failed to fetch investments", err);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -139,7 +144,13 @@ function Portfolio() {
       console.error("Refresh failed", err);
     }
   };
-
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p className="text-lg">Loading live market data...</p>
+      </div>
+    );
+  }
   return (
 
     <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -147,6 +158,9 @@ function Portfolio() {
       <h1 className="text-3xl font-bold mb-6">
         Portfolio Dashboard
       </h1>
+      <p className="text-sm text-gray-500 mb-4">
+        Last Updated: {lastUpdated?.toLocaleTimeString()}
+      </p>
 
       {/* ✅ Refresh Button */}
       <button

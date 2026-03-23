@@ -19,6 +19,7 @@ function TransactionsTable({ transactions = [], onEdit, onDelete, showActions = 
             <th className="p-2">Quantity</th>
             <th className="p-2">Price</th>
             <th className="p-2">Date</th>
+            <th className="p-2">Status</th>
             {showActions && <th className="p-2">Actions</th>}
           </tr>
         </thead>
@@ -34,6 +35,12 @@ function TransactionsTable({ transactions = [], onEdit, onDelete, showActions = 
               <td>{tx.quantity}</td>
               <td>₹{tx.price}</td>
               <td>{new Date(tx.executed_at).toLocaleDateString()}</td>
+              <td>
+                <span className="flex items-center justify-center gap-2 text-green-600 font-semibold">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  {tx.last_price_at ? "LIVE" : "OLD"}
+                </span>
+              </td>
 
               {showActions && (
                 <td className="space-x-2">
