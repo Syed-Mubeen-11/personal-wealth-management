@@ -6,6 +6,7 @@ from app.schemas.investments import InvestmentCreate, InvestmentResponse, Invest
 from app.models.user import User
 from app.core.auth import get_current_user
 from datetime import datetime
+from app.models.transactions import Transaction,TransactionTypeEnum
 from app.services.asset_price import get_asset_price
 from app.tasks.price_refresh import refresh_all_prices
 
@@ -20,7 +21,6 @@ def get_db():
         db.close()
 
 
-#  Create Investment
 @router.post("/", response_model=InvestmentResponse)
 def create_investment(
     data: InvestmentCreate,
@@ -28,9 +28,10 @@ def create_investment(
     current_user: User = Depends(get_current_user)
 ):
     price = get_asset_price(data.symbol, data.asset_type)
-    cost_basis = float(data.units) * float(data.avg_buy_price)
-    current_value = float(data.units) * float(price)
 
+    cost_basis = float(data.units) * float(data.avg_buy_price)
+
+    # Create Investment
     investment = Investment(
         user_id=current_user.id,
         symbol=data.symbol,
@@ -38,7 +39,7 @@ def create_investment(
         units=data.units,
         avg_buy_price=data.avg_buy_price,
         cost_basis=cost_basis,
-        current_value=current_value,
+        current_value=float(data.units) * float(price),
         last_price=price,
         last_price_at=datetime.utcnow()
     )
@@ -47,8 +48,22 @@ def create_investment(
     db.commit()
     db.refresh(investment)
 
-    return investment
+    # CREATE TRANSACTION (NEW)
+    transaction = Transaction(
+        user_id=current_user.id,
+        investment_id=investment.id,
+        symbol=data.symbol,
+        type=TransactionTypeEnum.buy,   # or enum if used
+        quantity=data.units,
+        price=data.avg_buy_price,
+        fees=0,
+        executed_at=datetime.utcnow()
+    )
 
+    db.add(transaction)
+    db.commit()
+
+    return investment
 
 #  Get User Investments
 @router.get("/", response_model=list[InvestmentResponse])

@@ -8,6 +8,7 @@ from app.models.transactions import Transaction
 from datetime import datetime
 import time
 from app.services.alpha_vantage import fetch_stock_price
+from app.services.asset_price import get_asset_price
 
 
 @celery.task
@@ -19,7 +20,8 @@ def refresh_all_prices():
 
     for inv in investments:
 
-        price = fetch_stock_price(inv.symbol)
+        price = get_asset_price(inv.symbol,inv.asset_type)
+        print("PRICE:", price)
 
         if price:
             inv.last_price = price

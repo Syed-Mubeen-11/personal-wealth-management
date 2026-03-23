@@ -45,18 +45,22 @@ def run_simulation(
         "projection": projection
     }
 
+    from datetime import datetime
+
     sim = Simulation(
         user_id=current_user.id,
         goal_id=goal_id,
         scenario_name=scenario_name,
         assumptions=assumptions,
-        results=results
+        results=results,
+        created_at=datetime.utcnow()
     )
 
     db.add(sim)
     db.commit()
+    db.refresh(sim)
 
     return {
         "simulation_id": sim.id,
-        "results": results
+        "projection": projection
     }

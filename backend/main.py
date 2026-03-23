@@ -8,9 +8,8 @@ from app.models import user, investments, transactions, goals, simulations
 
 # Routes
 from app.routes import goals, investments, transactions, simulations
-from app.routes.stock import router as stock_router
 from app.routes.auth import router as auth_router
-
+from app.routes import stock_search
 app = FastAPI()
 
 # CORS (must come before routers)
@@ -27,11 +26,11 @@ app.add_middleware(
 
 # Routers
 app.include_router(auth_router)
-app.include_router(stock_router, prefix="/stocks", tags=["Stocks"])
 app.include_router(goals.router, prefix="/goals", tags=["Goals"])
 app.include_router(investments.router, prefix="/investments", tags=["Investments"])
 app.include_router(transactions.router, prefix="/transactions", tags=["Transactions"])
 app.include_router(simulations.router, prefix="/simulations", tags=["Simulations"])
+app.include_router(stock_search.router, prefix="/stocks", tags=["Stocks"])
 
 # Create tables
 Base.metadata.create_all(bind=engine)
