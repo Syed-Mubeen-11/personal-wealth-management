@@ -1,110 +1,39 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/auth/ProtectedRoute'
+import PublicRoute from './components/auth/PublicRoute'
+import AppLayout from './components/layout/AppLayout'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import DashboardPage from './pages/DashboardPage'
+import ProfilePage from './pages/ProfilePage'
+import GoalsPage from './pages/GoalsPage'
+import GoalDetailsPage from './pages/GoalDetailsPage'
+import PortfolioPage from './pages/PortfolioPage'
+import { ReportsPage, NotFoundPage } from './pages/PlaceholderPages'
 
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
-
-import GoalsList from "./pages/Goals/GoalsList";
-import CreateGoal from "./pages/Goals/CreateGoal";
-
-import PortfolioOverview from "./pages/Portfolio/PortfolioOverview";
-import CreateInvestment from "./pages/Portfolio/CreateInvestment";
-import CreateTransaction from "./pages/Portfolio/CreateTransaction";
-
-import ProtectedRoute from "./components/ProtectedRoute";
-import DashboardLayout from "./layout/DashboardLayout";
-
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />
+          <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+            <Route path="/dashboard"    element={<DashboardPage />} />
+            <Route path="/profile"      element={<ProfilePage />} />
+            <Route path="/goals"        element={<GoalsPage />} />
+            <Route path="/goals/:id"    element={<GoalDetailsPage />} />
+            <Route path="/portfolio"    element={<PortfolioPage />} />
+            <Route path="/transactions" element={<PortfolioPage />} />
+            <Route path="/reports"      element={<ReportsPage />} />
+          </Route>
 
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <Profile />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
- 
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <Dashboard />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/goals"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <GoalsList />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        
-        <Route
-          path="/goals/create"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <CreateGoal />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/portfolio"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <PortfolioOverview />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/portfolio/create"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <CreateInvestment />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/transactions/create"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <CreateTransaction />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-
-      </Routes>
+          <Route path="/"  element={<Navigate to="/dashboard" replace />} />
+          <Route path="*"  element={<NotFoundPage />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
-  );
+  )
 }
-
-export default App;

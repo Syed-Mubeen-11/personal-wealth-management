@@ -1,35 +1,43 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import date, datetime
+from datetime import datetime
+from app.models.user import RiskProfile, KycStatus
 
-class UserCreate(BaseModel):
-    full_name: str
+# Auth schemas
+class RegisterRequest(BaseModel):
+    name: str
     email: EmailStr
     password: str
-    phone_number: Optional[str] = None
-    address: Optional[str] = None
-    risk_profile: Optional[str] = "moderate"
-    
-class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
-    phone_number: Optional[str] = None
-    address: Optional[str] = None
-    risk_profile: Optional[str] = None
 
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: "UserResponse"
+
+# User schemas
 class UserResponse(BaseModel):
     id: int
-    full_name: str
-    email: EmailStr
-    phone_number: Optional[str]
-    address: Optional[str]
-    risk_profile: str
-    kyc_status: bool
-    created_at: datetime
+    name: str
+    email: str
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    risk_profile: RiskProfile
+    kyc_status: KycStatus
+    created_at: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
 
+class UserUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    risk_profile: Optional[RiskProfile] = None
 
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+TokenResponse.model_rebuild()

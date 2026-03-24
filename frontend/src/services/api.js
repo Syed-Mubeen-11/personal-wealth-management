@@ -1,16 +1,30 @@
-import axios from "axios";
+import axios from 'axios'
 
-const API = axios.create({
-  baseURL: "http://localhost:8000", // change if deployed
-});
+const api = axios.create({
+  baseURL: '/api',
+  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' },
+})
 
-// Attach token automatically
-API.interceptors.request.use((req) => {
-  const token = localStorage.getItem("token");
+// Auto-attach stored token on every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('wm_token')
   if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
+    config.headers['Authorization'] = `Bearer ${token}`
   }
-  return req;
-});
+  return config
+})
 
-export default API;
+// Handle 401 globally → redirect to login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('wm_token')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
+export default api
