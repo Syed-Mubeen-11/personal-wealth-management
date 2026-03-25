@@ -385,3 +385,22 @@ class SaveSimulationRequest(BaseModel):
     # Backward-compatibility fields used by older frontend payloads
     monthly_investment: Optional[float] = None
     years: Optional[int] = None
+
+# ===================== BE-1 RECOMMENDATIONS =====================
+from pydantic import BaseModel, Field
+from typing import Dict, List
+from datetime import datetime
+
+class RecommendationOut(BaseModel):
+    id: int
+    title: str
+    recommendation_text: str
+    suggested_allocation: Dict[str, float] = Field(..., example={"Stocks": 0.35, "ETFs": 0.25})
+    created_at: datetime
+    is_read: bool = False
+
+class RecommendationListOut(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: List[RecommendationOut]

@@ -1766,3 +1766,26 @@ def refresh_prices():
         "task_id": task.id,
         "status_url": f"/api/refresh/status/{task.id}"
     }
+
+# ===================== BE-1 RECOMMENDATIONS =====================
+from fastapi import APIRouter, Depends
+from app.services.allocation_engine import compute_recommendation
+
+router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendations"])
+
+@router.post("/generate")
+def generate_recommendation():
+    """B1-2: Generate recommendation"""
+    return compute_recommendation(1)
+
+@router.get("/")
+def list_recommendations(limit: int = 10, offset: int = 0):
+    """B1-3: List recommendations"""
+    return {"total": 0, "limit": limit, "offset": offset, "items": []}
+
+@router.patch("/{rec_id}/read")
+def mark_read(rec_id: int):
+    """B1-4: Mark as read"""
+    return {"id": rec_id, "is_read": True}
+
+app.include_router(router)
