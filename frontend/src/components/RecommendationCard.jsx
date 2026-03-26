@@ -10,7 +10,8 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid
+  CartesianGrid,
+  LabelList
 } from 'recharts';
 import { ChevronDown, ChevronUp, CheckCircle, BarChart2, PieChart as PieChartIcon } from 'lucide-react';
 
@@ -146,6 +147,7 @@ export default function RecommendationCard({
                       {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
+                      <LabelList dataKey="value" position="right" formatter={(val) => val.toFixed(1) + '%'} fill="#6B7280" fontSize={11} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>

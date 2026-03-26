@@ -22,7 +22,10 @@ export default function useRecommendations() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetchRecommendations({ offset: (page - 1) * 10, limit: 10 });
+      const [res] = await Promise.all([
+        fetchRecommendations({ offset: (page - 1) * 10, limit: 10 }),
+        new Promise(resolve => setTimeout(resolve, 200))
+      ]);
       // Depending on API response shape: {"items": [...]} or just array
       const fetchedData = res; 
       
