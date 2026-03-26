@@ -7,7 +7,8 @@ import {
     TrendingUp, 
     Activity, 
     Bot, 
-    Target 
+    Target,
+    Zap
 } from "lucide-react";
 
 export default function Layout({ children }) {
@@ -39,6 +40,9 @@ export default function Layout({ children }) {
                     </Link>
                     <Link to="/ai-advice" className={`flex items-center gap-3 p-3 rounded-lg transition ${isActive('/ai-advice') ? 'bg-[#234C6A]' : 'text-gray-300 hover:text-white hover:bg-[#234C6A]'}`}>
                         <Bot size={20} /> AI Advice
+                    </Link>
+                    <Link to="/recommendations" className={`flex items-center gap-3 p-3 rounded-lg transition ${isActive('/recommendations') ? 'bg-[#234C6A]' : 'text-gray-300 hover:text-white hover:bg-[#234C6A]'}`}>
+                        <Zap size={20} /> Recommendations
                     </Link>
                     <Link to="/profile" className={`flex items-center gap-3 p-3 rounded-lg transition ${isActive('/profile') ? 'bg-[#234C6A]' : 'text-gray-300 hover:text-white hover:bg-[#234C6A]'}`}>
                         <PieChartIcon size={20} /> Profile & Risk

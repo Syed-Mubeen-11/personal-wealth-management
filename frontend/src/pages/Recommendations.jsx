@@ -1,79 +1,97 @@
 import React, { useState } from 'react';
-import api from '../api';
+import useRecommendations from '../hooks/useRecommendations';
+import RecommendationCard from '../components/RecommendationCard';
+import RecommendationSkeleton from '../components/RecommendationSkeleton';
+import EmptyRecommendations from '../components/EmptyRecommendations';
+import { RefreshCw, AlertCircle, X } from 'lucide-react';
 
-function Recommendations() {
-    const [risk, setRisk] = useState('medium');
-    const [advice, setAdvice] = useState([]);
-    const [loading, setLoading] = useState(false);
+export default function Recommendations() {
+  const { data, loading, error, refetch, toggleReadOptimistic } = useRecommendations();
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = React.useRef(null);
+  const fallbackDate = React.useMemo(() => new Date().toISOString(), []);
 
-    const getAdvice = async () => {
-        setLoading(true);
-        try {
-            // Connects to your FastAPI AI endpoint
-            const res = await api.get(`/recommendations/?risk=${risk}`);
-            setAdvice(res.data);
-        } catch (err) {
-            alert("Could not fetch advice.");
-        }
-        setLoading(false);
-    };
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type });
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  };
 
-    return (
-        <div className="max-w-4xl mx-auto p-6 space-y-8 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold text-gray-800">AI Investment Advice</h1>
-            
-            <div className="bg-white p-8 rounded-lg shadow-sm">
-                <label className="block text-gray-700 font-bold mb-4">Select Your Risk Tolerance:</label>
-                <div className="flex gap-4">
-                    <select 
-                        className="p-3 border rounded bg-gray-50 flex-1 outline-none focus:border-blue-500"
-                        value={risk} 
-                        onChange={(e) => setRisk(e.target.value)}
-                    >
-                        <option value="low">Low Risk (Conservative)</option>
-                        <option value="medium">Medium Risk (Balanced)</option>
-                        <option value="high">High Risk (Aggressive)</option>
-                    </select>
-                    <button 
-                        onClick={getAdvice} 
-                        className="bg-blue-600 text-white px-8 py-3 rounded font-bold hover:bg-blue-700 transition"
-                    >
-                        {loading ? "Analyzing..." : "Get AI Advice"}
-                    </button>
-                </div>
-            </div>
+  const handleMarkAsRead = async (id) => {
+    try {
+      await toggleReadOptimistic(id, false);
+    } catch (err) {
+      showToast('Failed to mark as read. Please try again.');
+    }
+  };
 
-            {/* Advice Cards */}
-            {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 mt-8">
-                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="mt-4 text-blue-800 font-bold">Analyzing your profile...</p>
-                </div>
-            ) : advice.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                    {advice.map((item, index) => (
-                        <div key={index} className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
-                            <div className="flex justify-between items-start mb-2">
-                                <h3 className="text-xl font-bold text-gray-800">{item.name}</h3>
-                                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-                                    {item.symbol}
-                                </span>
-                            </div>
-                            <p className="text-gray-600 mb-4">{item.reason}</p>
-                            <div className="text-right">
-                                <span className="text-sm font-bold text-gray-500 uppercase">Recommended Allocation: </span>
-                                <span className="text-lg font-bold text-blue-600">{item.allocation}%</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center text-gray-400 mt-10">
-                    <p>Select a risk level and click "Get AI Advice" to see recommendations.</p>
-                </div>
-            )}
+  const items = Array.isArray(data) ? data : (data?.items || []);
+
+  return (
+    <div className="max-w-4xl mx-auto p-6 relative">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">AI Recommendations</h1>
+          <p className="text-gray-500 mt-1">Personalized asset allocation advice based on your risk profile</p>
         </div>
-    );
-}
+        <button
+          onClick={() => refetch()}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-white border rounded shadow-sm text-gray-600 hover:text-blue-600 hover:border-blue-200 transition disabled:opacity-50"
+          aria-label="Refresh recommendations"
+        >
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
+      </div>
 
-export default Recommendations;
+      {loading && items.length === 0 ? (
+        <RecommendationSkeleton />
+      ) : error ? (
+        <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded shadow-sm text-red-800">
+          <div className="flex items-start gap-4">
+            <AlertCircle size={24} className="mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-lg mb-1">Failed to load recommendations</h3>
+              <p className="opacity-90">{error.response?.data?.detail || error.message || 'An unexpected error occurred.'}</p>
+              <button 
+                onClick={() => refetch()} 
+                className="mt-4 bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded font-medium transition"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : items.length === 0 ? (
+        <EmptyRecommendations />
+      ) : (
+        <div className="space-y-6">
+          {items.map((item) => (
+            <RecommendationCard
+              key={item.id}
+              id={item.id}
+              title={item.title || 'Allocation Recommendation'}
+              recommendationText={item.recommendation_text || item.description || ''}
+              createdAt={item.created_at || fallbackDate}
+              suggestedAllocation={item.suggested_allocation}
+              isRead={item.is_read || false}
+              onMarkAsRead={handleMarkAsRead}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 animate-fade-in-up z-50">
+          <AlertCircle size={20} className={toast.type === 'error' ? 'text-red-400' : 'text-green-400'} />
+          <p className="font-medium">{toast.message}</p>
+          <button onClick={() => setToast(null)} className="ml-2 text-gray-400 hover:text-white transition">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
