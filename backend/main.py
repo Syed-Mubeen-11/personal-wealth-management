@@ -1789,3 +1789,109 @@ def mark_read(rec_id: int):
     return {"id": rec_id, "is_read": True}
 
 app.include_router(router)
+
+
+# ===================== BE-2 REBALANCE + REPORTS =====================
+import json as _json
+import csv as _csv
+import io as _io
+from fastapi.responses import StreamingResponse
+import redis as _redis_lib
+
+from app.services.rebalance_service import compute_rebalance
+
+# --------------- Redis helper (graceful fallback) --------------------
+try:
+    _redis = _redis_lib.Redis.from_url(
+        os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+        decode_responses=True,
+        socket_connect_timeout=2,
+    )
+    _redis.ping()
+except Exception:
+    _redis = None
+
+_REBALANCE_TTL = 1800  # 30 minutes
+
+
+# B2-2 ── GET /api/v1/recommendations/rebalance
+@app.get("/api/v1/recommendations/rebalance")
+def get_rebalance(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    cache_key = f"rebalance:{current_user.id}"
+
+    # try cache first
+    if _redis is not None:
+        try:
+            cached = _redis.get(cache_key)
+            if cached:
+                return _json.loads(cached)
+        except Exception:
+            pass
+
+    result = compute_rebalance(current_user, db)
+
+    # store in cache
+    if _redis is not None:
+        try:
+            _redis.setex(cache_key, _REBALANCE_TTL, _json.dumps(result))
+        except Exception:
+            pass
+
+    return result
+
+
+# B2-4 ── GET /api/v1/reports/pdf
+@app.get("/api/v1/reports/pdf")
+def download_pdf_report(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.services.report_service import generate_pdf_report
+
+    buf = generate_pdf_report(current_user, db)
+    filename = f"wealth_report_{current_user.id}.pdf"
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# B2-5 ── GET /api/v1/reports/csv
+@app.get("/api/v1/reports/csv")
+def download_csv_report(
+    data_type: str = Query("portfolio", pattern="^(portfolio|goals|transactions)$"),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    output = _io.StringIO()
+    writer = _csv.writer(output)
+
+    if data_type == "portfolio":
+        writer.writerow(["Symbol", "Company", "Asset Class", "Quantity", "Buy Price", "Current Value", "Last Price"])
+        assets = db.query(models.Asset).filter(models.Asset.owner_id == current_user.id).all()
+        for a in assets:
+            writer.writerow([a.symbol, a.company_name, a.asset_class, a.quantity, a.buy_price, a.current_value, a.last_price])
+
+    elif data_type == "goals":
+        writer.writerow(["Goal Name", "Type", "Target Amount", "Target Date", "Monthly Contribution", "Status"])
+        goals = db.query(models.Goal).filter(models.Goal.user_id == current_user.id).all()
+        for g in goals:
+            writer.writerow([g.goal_name, g.goal_type.value if g.goal_type else "", g.target_amount, g.target_date, g.monthly_contribution, g.status.value if g.status else ""])
+
+    elif data_type == "transactions":
+        writer.writerow(["Date", "Type", "Symbol", "Quantity", "Amount"])
+        txns = db.query(models.Transaction).filter(models.Transaction.owner_id == current_user.id).order_by(models.Transaction.date.desc()).all()
+        for t in txns:
+            writer.writerow([t.date, t.transaction_type, t.asset_symbol, t.quantity, t.amount])
+
+    output.seek(0)
+    filename = f"{data_type}_{current_user.id}.csv"
+    return StreamingResponse(
+        _io.BytesIO(output.getvalue().encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
