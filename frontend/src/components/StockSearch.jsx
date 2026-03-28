@@ -1,99 +1,83 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-function StockSearch({ onSelect }) {
-
+function StockSearch({ onSelect, onChange, assetType }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🔥 debounce + safe search
   useEffect(() => {
-
+    if (onChange) onChange(query);
     if (query.length < 2) {
       setResults([]);
       return;
     }
 
+
     const delay = setTimeout(async () => {
       try {
         setLoading(true);
-
         const res = await axios.get(
-          `http://localhost:8000/stocks/search?keyword=${query}`
+          `http://localhost:8000/stocks/search?keyword=${query}&asset_type=${assetType || ""}`
         );
-
         setResults(res.data || []);
-
       } catch (err) {
-        console.error("Search error", err);
-        setResults([]);
+        console.error("Search failed", err);
       } finally {
         setLoading(false);
       }
-    }, 400); // 👈 debounce (important)
+    }, 500);
 
     return () => clearTimeout(delay);
+  }, [query, assetType]);
 
-  }, [query]);
-
-  // 💰 select + fetch price
   const handleSelect = async (stock) => {
     try {
-
       const priceRes = await axios.get(
         `http://localhost:8000/stocks/price/${stock.symbol}`
       );
-
       onSelect({
         symbol: stock.symbol,
         price: priceRes.data.price
       });
-
       setQuery(`${stock.name} (${stock.symbol})`);
       setResults([]);
-
     } catch (err) {
       console.error("Price fetch error", err);
     }
   };
 
   return (
-    <div className="relative">
-
+    <div className="relative w-full">
       <input
-        placeholder="Search Stock"
+        placeholder="Search stock..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="border p-2 rounded w-full"
       />
 
-      {/* 🔥 Loading */}
-      {loading && (
-        <div className="absolute w-full bg-white border p-2 text-sm">
-          Loading...
-        </div>
-      )}
+      {loading && <div className="absolute top-10 left-0 w-full p-2 bg-white border z-10">Loading...</div>}
 
-      {/* 🔥 Results */}
       {results.length > 0 && (
-        <ul className="absolute w-full border bg-white z-10 max-h-60 overflow-y-auto">
-
-          {results.map((stock, index) => (
+        <ul className="absolute top-10 left-0 w-full bg-white border shadow-lg z-10 max-h-60 overflow-y-auto">
+          {results.map((res, idx) => (
             <li
-              key={index}
-              onClick={() => handleSelect(stock)}
-              className="p-2 cursor-pointer hover:bg-gray-200"
+              key={idx}
+              onClick={() => handleSelect(res)}
+              className="p-2 hover:bg-gray-100 cursor-pointer border-b last:border-0"
             >
-              {stock.name} ({stock.symbol})
+              <div className="flex justify-between">
+                <span className="font-bold">{res.symbol}</span>
+                <span className="text-sm text-gray-500">{res.name}</span>
+              </div>
+              <div className="text-xs text-blue-500">{res.type}</div>
             </li>
           ))}
-
         </ul>
       )}
-
     </div>
   );
 }
 
 export default StockSearch;
+

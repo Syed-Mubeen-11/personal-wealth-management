@@ -45,7 +45,12 @@ class User(Base):
     risk_profile = Column(Enum(RiskProfileEnum), nullable=False)
     kyc_status = Column(Enum(KYCStatusEnum), default=KYCStatusEnum.unverified)
 
+    phone_number = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    dob = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 # goals = relationship("Goal", back_populates="user", cascade="all, delete")
 # investments = relationship("Investment", back_populates="user", cascade="all, delete")

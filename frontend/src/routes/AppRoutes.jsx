@@ -7,6 +7,8 @@ import Transactions from "../pages/Transactions";
 import Goals from "../pages/Goals";
 import Reports from "../pages/Reports";
 import Profile from "../pages/Profile";
+import SIPCalculator from "../pages/SIPCalculator";
+import Recommendations from "../pages/Recommendations";  // ✅ Add this import
 
 const AppRoutes = ({ isAuthenticated, setIsAuthenticated }) => {
   return (
@@ -38,6 +40,8 @@ const AppRoutes = ({ isAuthenticated, setIsAuthenticated }) => {
           <Route path="/goals" element={<Goals />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/sip-calculator" element={<SIPCalculator />} />
+          <Route path="/recommendations" element={<Recommendations />} />  {/* ✅ Add this route */}
         </>
       )}
 

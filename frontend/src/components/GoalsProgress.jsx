@@ -1,38 +1,23 @@
 import React, { useEffect, useState, useContext } from "react";
-import axios from "axios";
 import { ThemeContext } from "../context/Themecontext";
+import API from "../services/api";
 
 const GoalsProgress = () => {
+  const { darkMode } = useContext(ThemeContext);
+  const [goals, setGoals] = useState([]);
 
-const { darkMode } = useContext(ThemeContext);
-const [goals,setGoals]=useState([]);
+  useEffect(() => {
+    const fetchGoals = async () => {
+      try {
+        const res = await API.get("/goals/");
+        setGoals(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchGoals();
+  }, []);
 
-const token=localStorage.getItem("token");
-
-useEffect(()=>{
-
-const fetchGoals = async ()=>{
-
-try{
-
-const res = await axios.get(
-"http://localhost:8000/goals/",
-{
-headers:{Authorization:`Bearer ${token}`}
-}
-);
-
-setGoals(res.data);
-
-}catch(err){
-console.error(err);
-}
-
-};
-
-fetchGoals();
-
-},[]);
 
 return(
 

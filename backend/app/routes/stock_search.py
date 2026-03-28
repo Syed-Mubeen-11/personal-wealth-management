@@ -5,8 +5,9 @@ from app.services.alpha_vantage import fetch_stock_price
 router = APIRouter()
 
 @router.get("/search")
-def search_stock(keyword: str):
-    return search_stocks(keyword)
+def search_stock(keyword: str, asset_type: str = None):
+    return search_stocks(keyword, asset_type)
+
 
 @router.get("/price/{symbol}")
 def get_price(symbol: str):

@@ -19,6 +19,10 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     risk_profile: Optional[str] = None
+    phone_number: Optional[str] = None
+    address: Optional[str] = None
+    dob: Optional[str] = None
+
 
 
 class ChangePassword(BaseModel):

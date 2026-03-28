@@ -64,3 +64,24 @@ def run_simulation(
         "simulation_id": sim.id,
         "projection": projection
     }
+
+
+@router.get("/")
+def get_simulations(
+    goal_id: int = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns all simulations for the current user.
+    Optionally filters by goal_id.
+    Ordered by created_at descending.
+    """
+    query = db.query(Simulation).filter(Simulation.user_id == current_user.id)
+    
+    if goal_id:
+        query = query.filter(Simulation.goal_id == goal_id)
+        
+    simulations = query.order_by(Simulation.created_at.desc()).all()
+    
+    return simulations

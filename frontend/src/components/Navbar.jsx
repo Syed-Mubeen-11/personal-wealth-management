@@ -16,6 +16,8 @@ const Navbar = ({ setSidebarOpen }) => {
     "/goals": "Goals",
     "/reports": "Reports",
     "/profile": "Profile",
+    "/recommendations": "Recommendations",
+    "/sip-calculator": "SIP Calculator"
   };
 
   const pageTitle = titles[location.pathname] || "Dashboard";

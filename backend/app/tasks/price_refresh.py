@@ -13,22 +13,30 @@ from app.services.asset_price import get_asset_price
 
 @celery.task
 def refresh_all_prices():
-
+    print(f"[{datetime.utcnow()}] Starting nightly price refresh task...")
     db = SessionLocal()
 
     investments = db.query(Investment).all()
+    print(f"Found {len(investments)} investments to update.")
 
     for inv in investments:
+        try:
+            print(f"Fetching price for {inv.symbol} ({inv.asset_type})...")
+            price = get_asset_price(inv.symbol, inv.asset_type)
+            
+            if price:
+                inv.last_price = price
+                inv.current_value = price * float(inv.units)
+                inv.last_price_at = datetime.utcnow()
+                print(f"Updated {inv.symbol}: New Price = {price}")
+            else:
+                print(f"Warning: Could not fetch price for {inv.symbol}")
+        except Exception as e:
+            print(f"Error updating {inv.symbol}: {str(e)}")
 
-        price = get_asset_price(inv.symbol,inv.asset_type)
-        print("PRICE:", price)
-
-        if price:
-            inv.last_price = price
-            inv.current_value = price * float(inv.units)
-            inv.last_price_at = datetime.utcnow()
-
+        # Delay to avoid rate limits
         time.sleep(12)
 
     db.commit()
-    db.close()
+    print(f"[{datetime.utcnow()}] Price refresh task completed.")
+    db.close()

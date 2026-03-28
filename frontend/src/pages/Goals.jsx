@@ -1,16 +1,13 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import ContributionChart from "../components/ContributionChart";
-// ===== NEW IMPORTS FOR SIMULATION FEATURES =====
 import SimulationForm from "../components/SimulationForm";
 import SimulationResults from "../components/SimulationResults";
-import { getSavedSimulations } from "../services/api";
+import API, { getSavedSimulations } from "../services/api";
 
 function Goals() {
   const [goals, setGoals] = useState([]);
   const [selectedGoal, setSelectedGoal] = useState(null);
   
-  // ===== NEW STATE FOR SIMULATIONS =====
   const [simulationResult, setSimulationResult] = useState(null);
   const [savedSimulations, setSavedSimulations] = useState([]);
 
@@ -23,14 +20,10 @@ function Goals() {
 
   const [editId, setEditId] = useState(null);
 
-  const token = localStorage.getItem("token");
-
   // Fetch Goals
   const fetchGoals = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/goals/", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await API.get("/goals/");
       setGoals(res.data);
       if (res.data.length > 0) {
         setSelectedGoal(res.data[0]);
@@ -46,7 +39,7 @@ function Goals() {
     }
   };
 
-  // ===== NEW: Fetch saved simulations when goal changes =====
+  // Fetch saved simulations
   const fetchSavedSimulations = async (goalId) => {
     try {
       const res = await getSavedSimulations(goalId);
@@ -56,11 +49,10 @@ function Goals() {
     }
   };
 
-  // ===== NEW: Fetch simulations when selected goal changes =====
   useEffect(() => {
     if (selectedGoal) {
       fetchSavedSimulations(selectedGoal.id);
-      setSimulationResult(null); // Clear previous results when goal changes
+      setSimulationResult(null);
     }
   }, [selectedGoal]);
 
@@ -68,7 +60,6 @@ function Goals() {
     fetchGoals();
   }, []);
 
-  // Handle form change
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -76,19 +67,10 @@ function Goals() {
     });
   };
 
-  // Create Goal
   const createGoal = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(
-        "http://localhost:8000/goals/",
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      await API.post("/goals/", formData);
       fetchGoals();
       setFormData({
         goal_type: "",
@@ -101,19 +83,10 @@ function Goals() {
     }
   };
 
-  // Update Goal
   const updateGoal = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(
-        `http://localhost:8000/goals/${editId}`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      await API.put(`/goals/${editId}`, formData);
       setEditId(null);
       setFormData({
         goal_type: "",
@@ -127,19 +100,15 @@ function Goals() {
     }
   };
 
-  // Delete Goal
   const deleteGoal = async (id) => {
     try {
-      await axios.delete(`http://localhost:8000/goals/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      await API.delete(`/goals/${id}`);
       fetchGoals();
     } catch (error) {
       console.error(error);
     }
   };
+
 
   // Edit button
   const handleEdit = (goal) => {

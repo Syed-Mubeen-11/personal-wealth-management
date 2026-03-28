@@ -18,6 +18,8 @@ const Sidebar = ({ setIsAuthenticated, sidebarOpen, setSidebarOpen }) => {
     { name: "Portfolio", path: "/portfolio" },
     { name: "Transactions", path: "/transactions" },
     { name: "Goals", path: "/goals" },
+    { name: "Recommendations", path: "/recommendations" },  // ✅ Add this line
+    { name: "SIP Calculator", path: "/sip-calculator" },
     { name: "Reports", path: "/reports" },
     { name: "Profile", path: "/profile" },
   ];
@@ -59,10 +61,16 @@ const Sidebar = ({ setIsAuthenticated, sidebarOpen, setSidebarOpen }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={`block p-3 rounded hover:bg-indigo-100 dark:hover:bg-indigo-700 transition-colors duration-200 ${
-                  darkMode ? "text-gray-200" : "text-gray-800"
-                }`}
-                onClick={() => setSidebarOpen(false)} // close sidebar on mobile click
+                className={({ isActive }) =>
+                  `block p-3 rounded transition-colors duration-200 ${
+                    isActive
+                      ? "bg-indigo-100 dark:bg-indigo-700 text-indigo-700 dark:text-white"
+                      : darkMode
+                      ? "text-gray-200 hover:bg-indigo-700"
+                      : "text-gray-800 hover:bg-indigo-100"
+                  }`
+                }
+                onClick={() => setSidebarOpen(false)}
               >
                 {item.name}
               </NavLink>

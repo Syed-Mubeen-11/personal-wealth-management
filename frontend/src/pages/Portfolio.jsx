@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 import PortfolioSummary from "../components/PortfolioSummary";
 import InvestmentsTable from "../components/InvestmentsTable";
 import StockSearch from "../components/StockSearch";
+import RebalanceDrawer from "../components/RebalanceDrawer";
 
 function Portfolio() {
 
   const [investments, setInvestments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [isRebalanceDrawerOpen, setIsRebalanceDrawerOpen] = useState(false);
   const [formData, setFormData] = useState({
     symbol: "",
     asset_type: "",
@@ -18,16 +20,11 @@ function Portfolio() {
 
   const [editId, setEditId] = useState(null);
 
-  const token = localStorage.getItem("token");
-
   // ✅ Fetch investments
   const fetchInvestments = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        "http://localhost:8000/investments/",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await API.get("/investments/");
       setInvestments(res.data || []);
       setLastUpdated(new Date());
     } catch (err) {
@@ -47,61 +44,59 @@ function Portfolio() {
 
   // ✅ Handle form input
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
   };
+
+
   const createInvestment = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!formData.symbol || !formData.asset_type) {
-    alert("Please select stock and asset type");
-    return;
-  }
+    if (!formData.symbol || !formData.asset_type) {
+      alert("Please select stock and asset type");
+      return;
+    }
 
-  try {
-    await axios.post(
-      "http://localhost:8000/investments/",
-      {
+    try {
+      await API.post("/investments/", {
         symbol: formData.symbol,
         asset_type: formData.asset_type,
         units: Number(formData.units),
         avg_buy_price: Number(formData.avg_buy_price)
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+      });
 
-    resetForm();
-    fetchInvestments();
+      resetForm();
+      fetchInvestments();
 
-  } catch (err) {
-    console.log("BACKEND ERROR 👉", err.response?.data);
-  }
+    } catch (err) {
+      console.log("BACKEND ERROR 👉", err.response?.data);
+    }
   };
 
   // ✅ Update investment
   const updateInvestment = async (e) => {
     e.preventDefault();
 
-    await axios.put(
-      `http://localhost:8000/investments/${editId}`,
-      formData,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    resetForm();
-    fetchInvestments();
+    try {
+      await API.put(`/investments/${editId}`, formData);
+      resetForm();
+      fetchInvestments();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ✅ Delete
   const deleteInvestment = async (id) => {
-    await axios.delete(
-      `http://localhost:8000/investments/${id}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    fetchInvestments();
+    try {
+      await API.delete(`/investments/${id}`);
+      fetchInvestments();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleEdit = (inv) => {
@@ -129,12 +124,7 @@ function Portfolio() {
   // ✅ NEW: Refresh Prices (Celery)
   const refreshPrices = async () => {
     try {
-      await axios.post(
-        "http://localhost:8000/investments/refresh-prices",
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      await API.post("/investments/refresh-prices");
       alert("Refreshing prices in background...");
 
       // wait a bit and refetch
@@ -144,6 +134,7 @@ function Portfolio() {
       console.error("Refresh failed", err);
     }
   };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -162,13 +153,21 @@ function Portfolio() {
         Last Updated: {lastUpdated?.toLocaleTimeString()}
       </p>
 
-      {/* ✅ Refresh Button */}
-      <button
-        onClick={refreshPrices}
-        className="bg-green-600 text-white px-4 py-2 rounded mb-4"
-      >
-        Refresh Prices
-      </button>
+      {/* ✅ Action Buttons */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={refreshPrices}
+          className="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          Refresh Prices
+        </button>
+        <button
+          onClick={() => setIsRebalanceDrawerOpen(true)}
+          className="bg-purple-600 text-white px-4 py-2 rounded"
+        >
+          Rebalance Portfolio
+        </button>
+      </div>
 
       <PortfolioSummary investments={investments} />
 
@@ -198,14 +197,16 @@ function Portfolio() {
             <option value="cash">Cash</option>
           </select>
 
-          {(formData.asset_type === "stock" || formData.asset_type === "etf") ? (
+          {["stock", "etf", "mutual_fund"].includes(formData.asset_type) ? (
             <StockSearch
+              assetType={formData.asset_type}
+              onChange={(symbol) => setFormData((prev) => ({ ...prev, symbol }))}
               onSelect={(stock) =>
-                setFormData({
-                  ...formData,
+                setFormData((prev) => ({
+                  ...prev,
                   symbol: stock.symbol,
-                  avg_buy_price: stock.price   // 🔥 AUTO FILL
-                })
+                  avg_buy_price: stock.price || prev.avg_buy_price
+                }))
               }
             />
           ) : (
@@ -261,14 +262,17 @@ function Portfolio() {
 
       </form>
 
-      {/* ❌ REMOVED StockPrice */}
-      
-
       <InvestmentsTable
         investments={investments}
         onEdit={handleEdit}
         onDelete={deleteInvestment}
         fetchInvestments={fetchInvestments}
+      />
+
+      {/* Rebalance Drawer */}
+      <RebalanceDrawer
+        isOpen={isRebalanceDrawerOpen}
+        onClose={() => setIsRebalanceDrawerOpen(false)}
       />
 
     </div>

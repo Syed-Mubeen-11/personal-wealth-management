@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 import TransactionsTable from "../components/TransactionsTable";
 
 function Transactions() {
@@ -15,14 +15,9 @@ function Transactions() {
 
   const [editId, setEditId] = useState(null);
 
-  const token = localStorage.getItem("token");
-
   const fetchTransactions = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:8000/transactions/",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await API.get("/transactions/");
       setTransactions(res.data || []);
     } catch (err) {
       if (err.response && err.response.status === 401) {
@@ -35,10 +30,7 @@ function Transactions() {
 
   const fetchInvestments = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:8000/investments/",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await API.get("/investments/");
       setInvestments(res.data);
     } catch (err) {
       if (err.response && err.response.status === 401) {
@@ -55,54 +47,43 @@ function Transactions() {
   }, []);
 
   const handleChange = (e) => {
-
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
-
   };
 
   const createTransaction = async (e) => {
-
     e.preventDefault();
-
-    await axios.post(
-      "http://localhost:8000/transactions/",
-      formData,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    resetForm();
-    fetchTransactions();
-
+    try {
+      await API.post("/transactions/", formData);
+      resetForm();
+      fetchTransactions();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const updateTransaction = async (e) => {
-
     e.preventDefault();
-
-    await axios.put(
-      `http://localhost:8000/transactions/${editId}`,
-      formData,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    resetForm();
-    fetchTransactions();
-
+    try {
+      await API.put(`/transactions/${editId}`, formData);
+      resetForm();
+      fetchTransactions();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const deleteTransaction = async (id) => {
-
-    await axios.delete(
-      `http://localhost:8000/transactions/${id}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    fetchTransactions();
-
+    try {
+      await API.delete(`/transactions/${id}`);
+      fetchTransactions();
+    } catch (err) {
+      console.error(err);
+    }
   };
+
 
   const handleEdit = (tx) => {
 

@@ -18,26 +18,22 @@ function PortfolioSummary({ investments = [] }) {
 
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow">
+      <div className="bg-white p-6 rounded-xl shadow">
         <h2 className="text-lg font-semibold">Total Invested</h2>
-        <p className="text-2xl font-bold text-blue-600">
-          ₹{totalInvested}
-        </p>
+        <p className="text-2xl font-bold">₹{totalInvested}</p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow">
+      <div className="bg-white p-6 rounded-xl shadow">
         <h2 className="text-lg font-semibold">Portfolio Value</h2>
-        <p className="text-2xl font-bold text-green-600">
-          ₹{totalValue}
-        </p>
+        <p className="text-2xl font-bold">₹{totalValue}</p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow">
+      <div className="bg-white p-6 rounded-xl shadow">
         <h2 className="text-lg font-semibold">Profit / Loss</h2>
-        <p className="text-2xl font-bold text-red-600">
-          ₹{profit}
-        </p>
+        <p className="text-2xl font-bold">₹{profit}</p>
       </div>
+
+
 
     </div>
 
