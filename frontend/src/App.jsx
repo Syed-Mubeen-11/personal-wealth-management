@@ -10,7 +10,8 @@ import ProfilePage from './pages/ProfilePage'
 import GoalsPage from './pages/GoalsPage'
 import GoalDetailsPage from './pages/GoalDetailsPage'
 import PortfolioPage from './pages/PortfolioPage'
-import { ReportsPage, NotFoundPage } from './pages/PlaceholderPages'
+import RecommendationsPage from './pages/RecommendationsPage'   // ← FE-1
+import { NotFoundPage } from './pages/PlaceholderPages'
 
 export default function App() {
   return (
@@ -21,13 +22,14 @@ export default function App() {
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route path="/dashboard"    element={<DashboardPage />} />
-            <Route path="/profile"      element={<ProfilePage />} />
-            <Route path="/goals"        element={<GoalsPage />} />
-            <Route path="/goals/:id"    element={<GoalDetailsPage />} />
-            <Route path="/portfolio"    element={<PortfolioPage />} />
-            <Route path="/transactions" element={<PortfolioPage />} />
-            <Route path="/reports"      element={<ReportsPage />} />
+            <Route path="/dashboard"        element={<DashboardPage />} />
+            <Route path="/profile"          element={<ProfilePage />} />
+            <Route path="/goals"            element={<GoalsPage />} />
+            <Route path="/goals/:id"        element={<GoalDetailsPage />} />
+            <Route path="/portfolio"        element={<PortfolioPage />} />
+            <Route path="/transactions"     element={<PortfolioPage />} />
+            <Route path="/reports"          element={<RecommendationsPage />} />   {/* FE-1 */}
+            <Route path="/recommendations"  element={<RecommendationsPage />} />   {/* FE-1 alias */}
           </Route>
 
           <Route path="/"  element={<Navigate to="/dashboard" replace />} />

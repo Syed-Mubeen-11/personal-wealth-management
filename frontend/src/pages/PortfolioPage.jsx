@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { portfolioApi } from '../services/portfolioApi'
 import TransactionModal from '../components/portfolio/TransactionModal'
+import RebalanceDrawer from '../components/rebalance/RebalanceDrawer'
 import {
   Plus, TrendingUp, TrendingDown, Trash2,
   Search, Download, ChevronLeft, ChevronRight,
@@ -53,7 +54,8 @@ export default function PortfolioPage() {
   const [txnSearch,     setTxnSearch]     = useState('')
   const [txnTypeFilter, setTxnTypeFilter] = useState('')
 
-  const [txnModal,    setTxnModal]    = useState(false)
+  const [txnModal,       setTxnModal]       = useState(false)
+  const [rebalanceOpen,  setRebalanceOpen]  = useState(false)
   const [prefillSym,  setPrefillSym]  = useState('')
   const [delLoading,  setDelLoading]  = useState(null)
 
@@ -197,6 +199,9 @@ export default function PortfolioPage() {
             <button onClick={handleRefresh} disabled={refreshing} className="btn-ghost text-xs py-1.5 px-3 disabled:opacity-50">
               <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''}/>
               {refreshing ? 'Refreshing…' : 'Refresh Live Prices'}
+            </button>
+            <button onClick={() => setRebalanceOpen(true)} className="btn-ghost text-xs py-1.5 px-3">
+              ⚖️ Rebalance Portfolio
             </button>
             <button onClick={() => openBuyModal()} className="btn-purple text-xs py-1.5 px-3">
               <Plus size={13}/> Add Transaction
@@ -520,6 +525,11 @@ export default function PortfolioPage() {
         onClose={() => { setTxnModal(false); setPrefillSym('') }}
         onSubmit={handleCreateTxn}
         prefillSymbol={prefillSym}
+      />
+
+      <RebalanceDrawer
+        open={rebalanceOpen}
+        onClose={() => setRebalanceOpen(false)}
       />
     </div>
   )
