@@ -1773,20 +1773,73 @@ from app.services.allocation_engine import compute_recommendation
 
 router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendations"])
 
-@router.post("/generate")
-def generate_recommendation():
-    """B1-2: Generate recommendation"""
-    return compute_recommendation(1)
+@router.post("/generate", response_model=schemas.RecommendationOut)
+def generate_recommendation(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """B1-2: Generate recommendation for current user"""
+    return compute_recommendation(current_user, db)
 
-@router.get("/")
-def list_recommendations(limit: int = 10, offset: int = 0):
-    """B1-3: List recommendations"""
-    return {"total": 0, "limit": limit, "offset": offset, "items": []}
+@router.get("/", response_model=schemas.RecommendationListOut)
+def list_recommendations(
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """B1-3: List recommendations for current user. Auto-generates one if none exist."""
+    query = db.query(models.Recommendation).filter(models.Recommendation.user_id == current_user.id)
+    total = query.count()
+    
+    # Auto-generate if empty
+    if total == 0:
+        compute_recommendation(current_user, db)
+        query = db.query(models.Recommendation).filter(models.Recommendation.user_id == current_user.id)
+        total = query.count()
 
-@router.patch("/{rec_id}/read")
-def mark_read(rec_id: int):
-    """B1-4: Mark as read"""
-    return {"id": rec_id, "is_read": True}
+    items = query.order_by(models.Recommendation.created_at.desc()).offset(offset).limit(limit).all()
+    
+    out_items = []
+    for item in items:
+        out_items.append({
+            "id": item.id,
+            "title": item.title,
+            "recommendation_text": item.recommendation_text,
+            "suggested_allocation": item.suggested_allocation,
+            "created_at": item.created_at,
+            "is_read": bool(item.is_read)
+        })
+
+    return {"total": total, "limit": limit, "offset": offset, "items": out_items}
+
+@router.patch("/{rec_id}/read", response_model=schemas.RecommendationOut)
+def mark_read(
+    rec_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """B1-4: Mark a specific recommendation as read"""
+    rec = db.query(models.Recommendation).filter(
+        models.Recommendation.id == rec_id,
+        models.Recommendation.user_id == current_user.id
+    ).first()
+    
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+    
+    rec.is_read = 1
+    db.commit()
+    db.refresh(rec)
+    
+    return {
+        "id": rec.id,
+        "title": rec.title,
+        "recommendation_text": rec.recommendation_text,
+        "suggested_allocation": rec.suggested_allocation,
+        "created_at": rec.created_at,
+        "is_read": True
+    }
 
 app.include_router(router)
 

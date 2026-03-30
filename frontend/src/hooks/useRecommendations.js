@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchRecommendations, markRecommendationAsRead } from '../services/recommendations';
+import { fetchRecommendations, markRecommendationAsRead, generateRecommendation } from '../services/recommendations';
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
@@ -81,11 +81,38 @@ export default function useRecommendations() {
     }
   };
 
+  const generate = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 1. Trigger fresh recommendation generation
+      await generateRecommendation();
+      
+      // 2. Clear cache and refetch list
+      cacheRef.current = { timestamp: null, data: null };
+      const [res] = await Promise.all([
+        fetchRecommendations({ offset: 0, limit: 10 }),
+        new Promise(resolve => setTimeout(resolve, 500))
+      ]);
+      
+      const fetchedData = res; 
+      cacheRef.current = { timestamp: Date.now(), data: fetchedData };
+      setData(fetchedData);
+    } catch (err) {
+      console.error('Failed to generate recommendations:', err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return { 
     data, 
     loading, 
     error, 
     refetch: () => fetchData(true), 
+    generate,
     toggleReadOptimistic 
   };
 }
