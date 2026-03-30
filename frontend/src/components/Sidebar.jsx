@@ -1,14 +1,12 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { logout } from '../services/authService'; // Ensure the path matches your file name
+import { NavLink, useNavigate } from 'react-router-dom';
+import { logout } from '../services/authService';
 
 const Sidebar = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout(); 
-    // The logout service now handles clearing storage and redirecting, 
-    // but having navigate here is a safe backup.
+    logout();
     navigate('/login');
   };
 
@@ -22,6 +20,7 @@ const Sidebar = () => {
     { name: 'Trade History', path: '/transactions', icon: '📜' },
     { name: 'Profile', path: '/profile', icon: '👤' },
     { name: 'Simulation', path: '/simulation', icon: '🧪' },
+    { name: 'Recommendations', path: '/recommendations', icon: '🧠' },
   ];
 
   return (
@@ -29,18 +28,26 @@ const Sidebar = () => {
       <div className="p-6 text-2xl font-bold border-b border-slate-700 text-blue-400">
         WealthTrack
       </div>
+
       <nav className="flex-grow p-4 space-y-2 mt-4">
         {menuItems.map((item) => (
-          <Link
+          <NavLink
             key={item.name}
             to={item.path}
-            className="flex items-center p-3 rounded-lg hover:bg-slate-800 transition-colors"
+            className={({ isActive }) =>
+              `flex items-center p-3 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-blue-600 text-white'
+                  : 'hover:bg-slate-800 text-slate-300'
+              }`
+            }
           >
             <span className="mr-3">{item.icon}</span>
             {item.name}
-          </Link>
+          </NavLink>
         ))}
       </nav>
+
       <div className="p-4 border-t border-slate-700">
         <button
           onClick={handleLogout}

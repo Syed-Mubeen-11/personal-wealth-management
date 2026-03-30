@@ -1,33 +1,61 @@
+import yfinance as yf
+
+def fetch_live_market_data(tickers):
+    """Fetches real-time price and change % for NSE tickers"""
+    enriched_stocks = []
+    for symbol in tickers:
+        try:
+            ticker = yf.Ticker(symbol)
+            # Use fast_info for speed or history for reliability
+            info = ticker.history(period="1d")
+            if not info.empty:
+                current_price = info['Close'].iloc[-1]
+                prev_close = info['Open'].iloc[-1]
+                change_pct = ((current_price - prev_close) / prev_close) * 100
+                
+                enriched_stocks.append({
+                    "symbol": symbol.replace(".NS", ""),
+                    "price": round(current_price, 2),
+                    "change": round(change_pct, 2)
+                })
+        except Exception as e:
+            print(f"Error fetching {symbol}: {e}")
+            enriched_stocks.append({"symbol": symbol.replace(".NS", ""), "price": 0, "change": 0})
+    return enriched_stocks
+
 def generate_recommendation(user):
-    # Access risk_profile through the linked profile relationship
-    # Default to "moderate" if profile is missing or risk is "pending"
-    risk = "moderate"
-    if user.profile and user.profile.risk_profile != "pending":
-        risk = user.profile.risk_profile
-
-    if risk == "aggressive":
-        allocation = {
-            "stocks": 70,
-            "etf": 20,
-            "bonds": 10
+    risk = user.profile.risk_profile.lower() if user.profile else "moderate"
+    
+    # Mapping
+    config = {
+        "aggressive": {
+            "alloc": {"Stocks": 70, "ETFs": 20, "Bonds": 10},
+            "tickers": ["ZOMATO.NS", "TATAELXSI.NS", "HAL.NS", "MON100.NS"],
+            "title": "Aggressive Growth"
+        },
+        "conservative": {
+            "alloc": {"Stocks": 30, "ETFs": 40, "Bonds": 30},
+            "tickers": ["HDFCBANK.NS", "ITC.NS", "NIFTYBEES.NS", "GOLDSHARE.NS"],
+            "title": "Capital Preservation"
+        },
+        "moderate": {
+            "alloc": {"Stocks": 50, "ETFs": 30, "Bonds": 20},
+            "tickers": ["RELIANCE.NS", "TCS.NS", "INFY.NS", "JUNIORBEES.NS"],
+            "title": "Balanced Wealth"
         }
-    elif risk == "conservative":
-        allocation = {
-            "stocks": 30,
-            "etf": 40,
-            "bonds": 30
-        }
-    else:
-        # Default allocation for 'moderate' or 'pending' profiles
-        allocation = {
-            "stocks": 50,
-            "etf": 30,
-            "bonds": 20
-        }
-
-    text = f"Based on your {risk} risk profile, this portfolio allocation is recommended."
-
+    }
+    
+    selected = config.get(risk, config["moderate"])
+    
+    # B1: Fetch Real Prices
+    live_picks = fetch_live_market_data(selected["tickers"])
+    
     return {
-        "recommendation_text": text,
-        "suggested_allocation": allocation
+        "id": 1,
+        "title": selected["title"],
+        "recommendation_text": f"Based on your {risk} profile, we suggest a {selected['alloc']['Stocks']}% Equity exposure.",
+        "suggested_allocation": selected["alloc"],
+        "top_picks": live_picks, # Now contains {symbol, price, change}
+        "created_at": "2026-03-30T12:00:00Z",
+        "is_read": False
     }

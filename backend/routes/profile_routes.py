@@ -83,7 +83,7 @@ def update_profile(
     address: Optional[str] = Form(None),
     aadhaar_no: Optional[str] = Form(None),
     pan_no: Optional[str] = Form(None),
-    investment_risk: Optional[str] = Form(None),
+    investment_risk: Optional[str] = Form(None), # This comes from the Frontend dropdown
     profile_photo: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -92,26 +92,34 @@ def update_profile(
     if not db_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    # --- 1. DYNAMIC RISK CALCULATION LOGIC ---
-    # Fetch all incomes and expenses for the current user
-    # Note: Ensure 'Income' and 'Expense' are imported from models.models
-    user_incomes = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
-    user_expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
-
-    total_in = sum(inc.amount for inc in user_incomes)
-    total_ex = sum(exp.amount for exp in user_expenses)
+    # --- 1. RISK PROFILE SYNC & CALCULATION ---
     
-    # Calculate Savings Ratio
-    surplus = total_in - total_ex
-    savings_ratio = (surplus / total_in) if total_in > 0 else 0
-
-    # Determine Calculated Risk Profile based on Financial Capacity
-    if total_in == 0 or savings_ratio < 0.15:
-        db_profile.risk_profile = "CONSERVATIVE"
-    elif 0.15 <= savings_ratio < 0.35:
-        db_profile.risk_profile = "MODERATE"
+    # Priority A: Manual Override
+    # If the user explicitly chose a risk level in the UI, we use that.
+    if investment_risk and investment_risk.lower() != "pending":
+        db_profile.investment_risk = investment_risk.upper()
+        db_profile.risk_profile = investment_risk.upper()
+    
+    # Priority B: Automated Calculation (Only if no manual risk is set yet)
     else:
-        db_profile.risk_profile = "AGGRESSIVE"
+        user_incomes = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
+        user_expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
+
+        total_in = sum(inc.amount for inc in user_incomes)
+        total_ex = sum(exp.amount for exp in user_expenses)
+        
+        surplus = total_in - total_ex
+        savings_ratio = (surplus / total_in) if total_in > 0 else 0
+
+        if total_in == 0 or savings_ratio < 0.15:
+            calculated_risk = "CONSERVATIVE"
+        elif 0.15 <= savings_ratio < 0.35:
+            calculated_risk = "MODERATE"
+        else:
+            calculated_risk = "AGGRESSIVE"
+            
+        db_profile.risk_profile = calculated_risk
+        # We don't overwrite investment_risk here so we know it was 'auto-generated'
 
     # --- 2. UPDATE ACCOUNT & IDENTITY DETAILS ---
     if username: current_user.username = username
@@ -127,10 +135,6 @@ def update_profile(
     if pan_no: 
         db_profile.pan_no = pan_no
         db_profile.kyc_status = "pending"
-        
-    # Save the User's manual preference
-    if investment_risk: 
-        db_profile.investment_risk = investment_risk
 
     # --- 3. HANDLE PHOTO UPLOAD ---
     if profile_photo:
@@ -141,6 +145,7 @@ def update_profile(
             shutil.copyfileobj(profile_photo.file, buffer)
         db_profile.profile_photo = file_path
 
+    # Save all changes
     db.commit()
     db.refresh(db_profile)
     return db_profile
