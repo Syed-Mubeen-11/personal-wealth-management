@@ -8,7 +8,8 @@ import {
     Activity, 
     Bot, 
     Target,
-    Zap
+    Zap,
+    FileText
 } from "lucide-react";
 
 export default function Layout({ children }) {
@@ -49,6 +50,9 @@ export default function Layout({ children }) {
                     </Link>
                     <Link to="/goals" className={`flex items-center gap-3 p-3 rounded-lg transition ${isActive('/goals') ? 'bg-[#234C6A]' : 'text-gray-300 hover:text-white hover:bg-[#234C6A]'}`}>
                         <Target size={20} /> Goals
+                    </Link>
+                    <Link to="/reports" className={`flex items-center gap-3 p-3 rounded-lg transition ${isActive('/reports') ? 'bg-[#234C6A]' : 'text-gray-300 hover:text-white hover:bg-[#234C6A]'}`}>
+                        <FileText size={20} /> Reports
                     </Link>
                 </nav>
 

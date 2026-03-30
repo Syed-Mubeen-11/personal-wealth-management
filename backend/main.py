@@ -1789,3 +1789,116 @@ def mark_read(rec_id: int):
     return {"id": rec_id, "is_read": True}
 
 app.include_router(router)
+
+
+# =============================================================
+# REPORTS ENDPOINTS (FE Dev 3 - Milestone 4)
+# =============================================================
+from fastapi.responses import StreamingResponse
+import csv
+import io
+from datetime import datetime as dt
+
+@app.get("/api/v1/reports/pdf")
+def download_pdf_report(
+    scope: str = "full",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Generate and stream a plain-text PDF-style report as a downloadable file."""
+    lines = []
+    today = dt.now().strftime("%Y-%m-%d")
+    lines.append(f"WEALTH MANAGEMENT REPORT - {today}")
+    lines.append(f"User: {current_user.name} ({current_user.email})")
+    lines.append("=" * 60)
+
+    # Portfolio summary
+    lines.append("\n--- PORTFOLIO SUMMARY ---")
+    assets = db.query(models.Asset).filter(models.Asset.owner_id == current_user.id).all()
+    total_cost = sum(a.quantity * a.buy_price for a in assets)
+    total_value = sum((a.current_value or a.quantity * a.buy_price) for a in assets)
+    lines.append(f"Total Cost Basis:    ${total_cost:,.2f}")
+    lines.append(f"Total Market Value:  ${total_value:,.2f}")
+    lines.append(f"Overall Gain/Loss:   ${total_value - total_cost:,.2f}")
+    lines.append(f"\n{'Symbol':<10} {'Units':>8} {'Cost':>12} {'Value':>12} {'G/L%':>8}")
+    lines.append("-" * 55)
+    for a in assets:
+        cost = a.quantity * a.buy_price
+        val = a.current_value or cost
+        gl_pct = ((val - cost) / cost * 100) if cost > 0 else 0
+        lines.append(f"{a.symbol:<10} {a.quantity:>8.2f} ${cost:>11,.2f} ${val:>11,.2f} {gl_pct:>7.1f}%")
+
+    # Goals
+    lines.append("\n--- GOALS PROGRESS ---")
+    goals = db.query(models.Goal).filter(models.Goal.user_id == current_user.id).all()
+    for g in goals:
+        status = g.status.value if hasattr(g.status, 'value') else g.status
+        lines.append(f"  {g.goal_name} | Target: ${g.target_amount:,.2f} | Monthly: ${g.monthly_contribution:,.2f} | Status: {status}")
+
+    # Simulations
+    lines.append("\n--- SIMULATION HISTORY ---")
+    sims = db.query(models.Simulation).filter(
+        models.Simulation.user_id == current_user.id
+    ).order_by(models.Simulation.created_at.desc()).limit(10).all()
+    for s in sims:
+        created = s.created_at.strftime("%Y-%m-%d") if s.created_at else "N/A"
+        lines.append(f"  [{created}] {s.scenario_name}")
+
+    content = "\n".join(lines)
+    buf = io.BytesIO(content.encode("utf-8"))
+    filename = f"wealth-report-{today}.pdf"
+    return StreamingResponse(
+        buf,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@app.get("/api/v1/reports/csv")
+def download_csv_report(
+    type: str = "portfolio",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Generate and stream a CSV report for portfolio positions."""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    today = dt.now().strftime("%Y-%m-%d")
+
+    if type == "portfolio":
+        writer.writerow(["Symbol", "Units", "Avg Buy Price", "Current Value", "Cost Basis", "Gain/Loss", "Gain/Loss %"])
+        assets = db.query(models.Asset).filter(models.Asset.owner_id == current_user.id).all()
+        for a in assets:
+            cost = round(a.quantity * a.buy_price, 2)
+            val = round(a.current_value or cost, 2)
+            gl = round(val - cost, 2)
+            gl_pct = round((gl / cost * 100) if cost > 0 else 0, 2)
+            writer.writerow([a.symbol, a.quantity, a.buy_price, val, cost, gl, gl_pct])
+    elif type == "goals":
+        writer.writerow(["Goal Name", "Type", "Target Amount", "Monthly Contribution", "Status", "Target Date"])
+        goals = db.query(models.Goal).filter(models.Goal.user_id == current_user.id).all()
+        for g in goals:
+            writer.writerow([
+                g.goal_name,
+                g.goal_type.value if hasattr(g.goal_type, 'value') else g.goal_type,
+                g.target_amount,
+                g.monthly_contribution,
+                g.status.value if hasattr(g.status, 'value') else g.status,
+                g.target_date.isoformat() if g.target_date else ""
+            ])
+    elif type == "simulations":
+        writer.writerow(["Scenario Name", "Created Date", "Assumptions", "Results Summary"])
+        sims = db.query(models.Simulation).filter(
+            models.Simulation.user_id == current_user.id
+        ).order_by(models.Simulation.created_at.desc()).all()
+        for s in sims:
+            created = s.created_at.strftime("%Y-%m-%d") if s.created_at else ""
+            writer.writerow([s.scenario_name, created, str(s.assumptions), str(s.results)])
+
+    output.seek(0)
+    filename = f"portfolio-{today}.csv"
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

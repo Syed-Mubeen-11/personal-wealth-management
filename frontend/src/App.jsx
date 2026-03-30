@@ -14,6 +14,7 @@ import Goals from './pages/Goals';
 import Simulator from './pages/Simulator';
 import AIAdvice from './pages/AIAdvice';
 import Recommendations from './pages/Recommendations';
+import Reports from './pages/Reports';
 
 // --- SECURE ROUTE WRAPPER ---
 // Updated to check for 'jwt' matching your new login logic!
@@ -41,6 +42,7 @@ export default function App() {
                 <Route path="/simulator-full" element={<PrivateRoute><Layout><Simulator /></Layout></PrivateRoute>} />
                 <Route path="/ai-advice" element={<PrivateRoute><Layout><AIAdvice /></Layout></PrivateRoute>} />
                 <Route path="/recommendations" element={<PrivateRoute><Layout><Recommendations /></Layout></PrivateRoute>} />
+                <Route path="/reports" element={<PrivateRoute><Layout><Reports /></Layout></PrivateRoute>} />
 
                 {/* Catch-all Redirect */}
                 <Route path="*" element={<Navigate to="/" />} />
