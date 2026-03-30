@@ -15,7 +15,9 @@ import {
 } from 'recharts';
 import { ChevronDown, ChevronUp, CheckCircle, BarChart2, PieChart as PieChartIcon } from 'lucide-react';
 
-const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#6B7280'];
+const BRAND_TEAL = '#1B3C53';
+const BRAND_TEAL_LIGHT = '#234C6A';
+const COLORS = [BRAND_TEAL, '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#64748B'];
 
 export default function RecommendationCard({
   id,
@@ -32,7 +34,7 @@ export default function RecommendationCard({
   // Normalize data safely
   const rawEntries = Object.entries(suggestedAllocation || {});
   const rawSum = rawEntries.reduce((acc, [_, val]) => acc + val, 0);
-  const isDecimal = rawSum > 0 && rawSum <= 1.1; // Safely assume decimal format if sum is near 1
+  const isDecimal = rawSum > 0 && rawSum <= 1.1;
 
   let chartData = [];
   let otherSum = 0;
@@ -57,17 +59,11 @@ export default function RecommendationCard({
     chartData.push({ name: 'Other', value: otherSum });
   }
 
-  // Sort descending
   chartData.sort((a, b) => b.value - a.value);
 
-  // Determine border color based on dominant class (simple hash to color)
-  const getBorderColor = () => {
-    if (!dominantClass) return 'border-l-blue-500';
-    const sumChars = dominantClass.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    const colorIndex = sumChars % COLORS.length;
-    // Map to tailwind generic colors roughly corresponding to COLORS array
-    const twColors = ['border-l-blue-600', 'border-l-green-500', 'border-l-yellow-500', 'border-l-purple-500', 'border-l-red-500', 'border-l-gray-500'];
-    return twColors[colorIndex];
+  const getCardBorder = () => {
+    if (isRead) return 'border-l-gray-200';
+    return 'border-l-[#1B3C53]';
   };
 
   const formattedDate = new Intl.DateTimeFormat('en-US', {
@@ -79,9 +75,9 @@ export default function RecommendationCard({
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border rounded shadow-md text-sm">
-          <p className="font-semibold">{payload[0].name}</p>
-          <p className="text-gray-600">{payload[0].value.toFixed(1)}%</p>
+        <div className="bg-[#1B3C53] text-white p-3 border-none rounded-lg shadow-xl text-xs sm:text-sm">
+          <p className="font-bold border-b border-white/20 pb-1 mb-1">{payload[0].name}</p>
+          <p className="text-white/90">{payload[0].value.toFixed(1)}%</p>
         </div>
       );
     }
@@ -90,135 +86,110 @@ export default function RecommendationCard({
 
   return (
     <div 
-      className={`bg-white border rounded-lg shadow-sm transition-all duration-300 relative ${getBorderColor()} border-l-4 ${isRead ? 'opacity-70 grayscale' : 'hover:shadow-md'}`}
+      className={`bg-white rounded-3xl p-8 sm:p-10 border border-gray-100 shadow-xl transition-all duration-500 overflow-hidden ${isRead ? 'opacity-60 grayscale-[0.5]' : ''}`}
       role="article"
       aria-labelledby={`card-title-${id}`}
     >
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 id={`card-title-${id}`} className="text-xl font-bold text-gray-800 mb-1">{title}</h3>
-            <p className="text-sm text-gray-400">{formattedDate}</p>
+      <div className="w-full">
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-6 mb-8 mt-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-3">
+              <span className={`h-1 w-8 rounded-full ${isRead ? 'bg-gray-300' : 'bg-[#1B3C53]'}`}></span>
+              <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest">{formattedDate}</p>
+            </div>
+            <h3 id={`card-title-${id}`} className="text-2xl sm:text-3xl font-black text-[#1B3C53] mb-4 leading-[1.1] tracking-tight">
+              {title}
+            </h3>
+            <div className="max-w-2xl">
+              <p className="text-sm sm:text-base text-gray-500 leading-relaxed font-medium">
+                {recommendationText}
+              </p>
+            </div>
           </div>
-          {!isRead && (
-            <button
-              onClick={() => onMarkAsRead(id)}
-              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full"
-              aria-label="Mark as read"
-            >
-              <CheckCircle size={16} /> Mark as Read
-            </button>
-          )}
-          {isRead && (
-            <span className="flex items-center gap-1 text-sm text-gray-400 font-medium">
-              <CheckCircle size={16} /> Read
-            </span>
-          )}
+          
+          <div className="flex-shrink-0">
+            {!isRead ? (
+              <button
+                onClick={() => onMarkAsRead(id)}
+                className="group flex items-center gap-3 text-[10px] sm:text-xs text-[#1B3C53] transition-all font-bold uppercase tracking-widest px-6 py-3 border-2 border-[#1B3C53] rounded-xl hover:bg-[#1B3C53] hover:text-white"
+                aria-label="Mark as read"
+              >
+                <CheckCircle size={16} className="group-hover:scale-110 transition-transform" /> 
+                Acknowledge
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 rounded-xl text-gray-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs">
+                <CheckCircle size={16} /> Executed
+              </div>
+            )}
+          </div>
         </div>
 
-        <p className="text-gray-600 mb-6 leading-relaxed">
-          {recommendationText}
-        </p>
-
-        {/* Charts Section */}
+        {/* Charts & Analytics Section */}
         {chartData.length > 0 && (
-          <div className="mb-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="font-semibold text-gray-700 text-sm">Suggested Allocation</h4>
-              <button 
-                onClick={() => setIsBarView(!isBarView)}
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition bg-white border border-gray-200 px-2 py-1 rounded"
-                aria-label="Toggle chart view"
-              >
-                {isBarView ? <PieChartIcon size={14} /> : <BarChart2 size={14} />}
-                {isBarView ? 'Pie' : 'Bar'}
-              </button>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 items-center bg-[#F8FAFC]/50 -mx-8 -mb-8 sm:-mx-10 sm:-mb-10 p-8 sm:p-10 mt-8 border-t border-gray-50">
+            <div className="order-2 xl:order-1">
+              <div className="flex justify-between items-end mb-6 pb-2 border-b border-gray-200">
+                <h4 className="font-bold text-[#1B3C53] text-[10px] uppercase tracking-widest opacity-60">Target Model</h4>
+                <button 
+                  onClick={() => setIsBarView(!isBarView)}
+                  className="text-[9px] font-bold text-gray-400 hover:text-[#1B3C53] transition uppercase tracking-widest flex items-center gap-1.5"
+                >
+                  {isBarView ? <PieChartIcon size={12} /> : <BarChart2 size={12} />}
+                  {isBarView ? 'Radial' : 'Linear'}
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {chartData.map((item, idx) => (
+                  <div key={idx} className="group">
+                    <div className="flex justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{item.name}</span>
+                      <span className="text-[11px] font-bold text-[#1B3C53]">{item.value.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200/50 h-1 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full transition-all duration-1000 ease-out" 
+                        style={{ 
+                          width: `${item.value}%`, 
+                          backgroundColor: COLORS[idx % COLORS.length] 
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            
-            <div className="h-64 w-full">
-              {isBarView ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                    <XAxis type="number" unit="%" domain={[0, 'dataMax']} hide />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} fontSize={12} width={80} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                      <LabelList dataKey="value" position="right" formatter={(val) => val.toFixed(1) + '%'} fill="#6B7280" fontSize={11} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius="60%"
-                      outerRadius="80%"
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
+
+            <div className="order-1 xl:order-2 h-[280px] sm:h-[320px] relative">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="text-center">
+                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Optimized</p>
+                  <p className="text-xl font-black text-[#1B3C53] leading-none">AI</p>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="65%"
+                    outerRadius="90%"
+                    paddingAngle={4}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}
-
-        {/* Expansion Panel */}
-        <div className="mt-4 border-t pt-4">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center justify-center gap-2 w-full text-sm text-gray-500 hover:text-gray-800 transition font-medium"
-            aria-expanded={isExpanded}
-            aria-controls={`breakdown-panel-${id}`}
-          >
-            {isExpanded ? 'Hide Full Breakdown' : 'View Full Breakdown'}
-            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-          
-          <div 
-            id={`breakdown-panel-${id}`}
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}
-          >
-            <div className="bg-white border rounded p-4 text-sm">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b text-gray-500">
-                    <th className="pb-2 font-medium">Asset Class</th>
-                    <th className="pb-2 font-medium text-right">Allocation</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {chartData.map((item, idx) => (
-                    <tr key={idx} className="border-b last:border-0 hover:bg-gray-50">
-                      <td className="py-2 flex items-center gap-2">
-                        <span 
-                          className="w-3 h-3 rounded-full inline-block" 
-                          style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-                        ></span>
-                        {item.name}
-                      </td>
-                      <td className="py-2 text-right font-medium">{item.value.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

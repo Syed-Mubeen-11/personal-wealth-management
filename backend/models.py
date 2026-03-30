@@ -132,3 +132,19 @@ class Simulation(Base):
     # Relationships
     owner = relationship("User", backref="simulations")
     goal = relationship("Goal", backref="simulations")
+
+
+class Recommendation(Base):
+    """B1-1: AI Recommendation Table"""
+    __tablename__ = "recommendations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String, nullable=False)
+    recommendation_text = Column(String, nullable=False)
+    suggested_allocation = Column(JSON, nullable=False)  # e.g. {"Stocks": 0.35, "ETFs": 0.25}
+    is_read = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    owner = relationship("User", backref="recommendations_list")

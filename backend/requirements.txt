@@ -38,3 +38,6 @@ numpy==2.4.3
 
 # Date/Time utilities
 python-dateutil==2.9.0.post0
+
+# PDF Report Generation
+reportlab>=4.0

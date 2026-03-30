@@ -1,4 +1,5 @@
-from typing import Dict
+from typing import Dict, Any
+from sqlalchemy.orm import Session
 
 # B1-1: Risk templates (decimals 0.15 = 15%)
 TEMPLATES: Dict[str, Dict[str, float]] = {
@@ -10,15 +11,50 @@ TEMPLATES: Dict[str, Dict[str, float]] = {
 def get_target_allocation(risk_profile: str) -> Dict[str, float]:
     """B1-1: Get target by risk profile"""
     if risk_profile not in TEMPLATES:
-        raise ValueError(f"Unknown risk_profile: {risk_profile}")
+        return TEMPLATES["moderate"]
     return TEMPLATES[risk_profile]
 
-def compute_recommendation(user_id: int, db=None) -> Dict:
-    """B1-1: Compute rec (connect to DB later)"""
-    # TODO: Real DB query (Milestone 3 Investments)
-    target = get_target_allocation("moderate")  # Demo
+def compute_recommendation(user, db: Session) -> Dict[str, Any]:
+    """B1-1: Compute and SAVE a recommendation based on risk profile and current portfolio."""
+    from app.services.rebalance_service import compute_rebalance
+    import models
+
+    risk_profile = user.risk_profile or "moderate"
+    if hasattr(risk_profile, "value"):
+        risk_profile = risk_profile.value
+
+    # Get target allocation
+    target = get_target_allocation(risk_profile)
+    
+    # Get portfolio gap
+    rebalance = compute_rebalance(user, db)
+    
+    # Generate text
+    suggestions = rebalance.get("suggestions", [])
+    if not suggestions:
+        rec_text = "Your portfolio is perfectly balanced! No action needed at this time."
+    else:
+        rec_text = f"Based on your {risk_profile} risk profile: "
+        actions = [s["action"] for s in suggestions]
+        rec_text += ", ".join(actions) + "."
+
+    # Protect against multiple identical recommendations if needed, but for now just save
+    rec = models.Recommendation(
+        user_id=user.id,
+        title=f"{risk_profile.capitalize()} Risk Recommendation",
+        recommendation_text=rec_text,
+        suggested_allocation=target,
+        is_read=0
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+
     return {
-        "title": "Moderate Risk Recommendation",
-        "recommendation_text": "Stocks overweight 10%. Reduce to 35%, add Bonds.",
-        "suggested_allocation": target
+        "id": rec.id,
+        "title": rec.title,
+        "recommendation_text": rec.recommendation_text,
+        "suggested_allocation": rec.suggested_allocation,
+        "is_read": False,
+        "created_at": rec.created_at
     }

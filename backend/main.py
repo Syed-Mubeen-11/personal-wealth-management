@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -1157,7 +1157,7 @@ def calculate_sip(monthly_investment: float, years: int, annual_rate: float) -> 
     """
     SIP Calculator - Calculates future value with monthly compounding
     
-    Formula: FV = P × [(1 + r)^n – 1] / r × (1 + r)
+    Formula: FV = P Ã— [(1 + r)^n â€“ 1] / r Ã— (1 + r)
     Where: P = Monthly investment, r = Monthly rate, n = Total months
     """
     monthly_rate = annual_rate / 100 / 12
@@ -1295,7 +1295,7 @@ def calculate_loan_payoff(
     """
     monthly_rate = annual_rate / 100 / 12
     
-    # Calculate standard EMI using formula: EMI = P × r × (1 + r)^n / ((1 + r)^n – 1)
+    # Calculate standard EMI using formula: EMI = P Ã— r Ã— (1 + r)^n / ((1 + r)^n â€“ 1)
     if monthly_rate > 0:
         emi = principal * monthly_rate * ((1 + monthly_rate) ** term_months) / (((1 + monthly_rate) ** term_months) - 1)
     else:
@@ -1773,132 +1773,180 @@ from app.services.allocation_engine import compute_recommendation
 
 router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendations"])
 
-@router.post("/generate")
-def generate_recommendation():
-    """B1-2: Generate recommendation"""
-    return compute_recommendation(1)
+@router.post("/generate", response_model=schemas.RecommendationOut)
+def generate_recommendation(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """B1-2: Generate recommendation for current user"""
+    return compute_recommendation(current_user, db)
 
-@router.get("/")
-def list_recommendations(limit: int = 10, offset: int = 0):
-    """B1-3: List recommendations"""
-    return {"total": 0, "limit": limit, "offset": offset, "items": []}
+@router.get("/", response_model=schemas.RecommendationListOut)
+def list_recommendations(
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """B1-3: List recommendations for current user. Auto-generates one if none exist."""
+    query = db.query(models.Recommendation).filter(models.Recommendation.user_id == current_user.id)
+    total = query.count()
+    
+    # Auto-generate if empty
+    if total == 0:
+        compute_recommendation(current_user, db)
+        query = db.query(models.Recommendation).filter(models.Recommendation.user_id == current_user.id)
+        total = query.count()
 
-@router.patch("/{rec_id}/read")
-def mark_read(rec_id: int):
-    """B1-4: Mark as read"""
-    return {"id": rec_id, "is_read": True}
+    items = query.order_by(models.Recommendation.created_at.desc()).offset(offset).limit(limit).all()
+    
+    out_items = []
+    for item in items:
+        out_items.append({
+            "id": item.id,
+            "title": item.title,
+            "recommendation_text": item.recommendation_text,
+            "suggested_allocation": item.suggested_allocation,
+            "created_at": item.created_at,
+            "is_read": bool(item.is_read)
+        })
+
+    return {"total": total, "limit": limit, "offset": offset, "items": out_items}
+
+@router.patch("/{rec_id}/read", response_model=schemas.RecommendationOut)
+def mark_read(
+    rec_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """B1-4: Mark a specific recommendation as read"""
+    rec = db.query(models.Recommendation).filter(
+        models.Recommendation.id == rec_id,
+        models.Recommendation.user_id == current_user.id
+    ).first()
+    
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+    
+    rec.is_read = 1
+    db.commit()
+    db.refresh(rec)
+    
+    return {
+        "id": rec.id,
+        "title": rec.title,
+        "recommendation_text": rec.recommendation_text,
+        "suggested_allocation": rec.suggested_allocation,
+        "created_at": rec.created_at,
+        "is_read": True
+    }
 
 app.include_router(router)
 
 
-# =============================================================
-# REPORTS ENDPOINTS (FE Dev 3 - Milestone 4)
-# =============================================================
+# ===================== BE-2 REBALANCE + REPORTS =====================
+import json as _json
+import csv as _csv
+import io as _io
 from fastapi.responses import StreamingResponse
-import csv
-import io
-from datetime import datetime as dt
+import redis as _redis_lib
 
+from app.services.rebalance_service import compute_rebalance
+
+# --------------- Redis helper (graceful fallback) --------------------
+try:
+    _redis = _redis_lib.Redis.from_url(
+        os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+        decode_responses=True,
+        socket_connect_timeout=2,
+    )
+    _redis.ping()
+except Exception:
+    _redis = None
+
+_REBALANCE_TTL = 1800  # 30 minutes
+
+
+# B2-2 â”€â”€ GET /api/v1/recommendations/rebalance
+@app.get("/api/v1/recommendations/rebalance")
+def get_rebalance(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    cache_key = f"rebalance:{current_user.id}"
+
+    # try cache first
+    if _redis is not None:
+        try:
+            cached = _redis.get(cache_key)
+            if cached:
+                return _json.loads(cached)
+        except Exception:
+            pass
+
+    result = compute_rebalance(current_user, db)
+
+    # store in cache
+    if _redis is not None:
+        try:
+            _redis.setex(cache_key, _REBALANCE_TTL, _json.dumps(result))
+        except Exception:
+            pass
+
+    return result
+
+
+# B2-4 â”€â”€ GET /api/v1/reports/pdf
 @app.get("/api/v1/reports/pdf")
 def download_pdf_report(
-    scope: str = "full",
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
 ):
-    """Generate and stream a plain-text PDF-style report as a downloadable file."""
-    lines = []
-    today = dt.now().strftime("%Y-%m-%d")
-    lines.append(f"WEALTH MANAGEMENT REPORT - {today}")
-    lines.append(f"User: {current_user.name} ({current_user.email})")
-    lines.append("=" * 60)
+    from app.services.report_service import generate_pdf_report
 
-    # Portfolio summary
-    lines.append("\n--- PORTFOLIO SUMMARY ---")
-    assets = db.query(models.Asset).filter(models.Asset.owner_id == current_user.id).all()
-    total_cost = sum(a.quantity * a.buy_price for a in assets)
-    total_value = sum((a.current_value or a.quantity * a.buy_price) for a in assets)
-    lines.append(f"Total Cost Basis:    ${total_cost:,.2f}")
-    lines.append(f"Total Market Value:  ${total_value:,.2f}")
-    lines.append(f"Overall Gain/Loss:   ${total_value - total_cost:,.2f}")
-    lines.append(f"\n{'Symbol':<10} {'Units':>8} {'Cost':>12} {'Value':>12} {'G/L%':>8}")
-    lines.append("-" * 55)
-    for a in assets:
-        cost = a.quantity * a.buy_price
-        val = a.current_value or cost
-        gl_pct = ((val - cost) / cost * 100) if cost > 0 else 0
-        lines.append(f"{a.symbol:<10} {a.quantity:>8.2f} ${cost:>11,.2f} ${val:>11,.2f} {gl_pct:>7.1f}%")
-
-    # Goals
-    lines.append("\n--- GOALS PROGRESS ---")
-    goals = db.query(models.Goal).filter(models.Goal.user_id == current_user.id).all()
-    for g in goals:
-        status = g.status.value if hasattr(g.status, 'value') else g.status
-        lines.append(f"  {g.goal_name} | Target: ${g.target_amount:,.2f} | Monthly: ${g.monthly_contribution:,.2f} | Status: {status}")
-
-    # Simulations
-    lines.append("\n--- SIMULATION HISTORY ---")
-    sims = db.query(models.Simulation).filter(
-        models.Simulation.user_id == current_user.id
-    ).order_by(models.Simulation.created_at.desc()).limit(10).all()
-    for s in sims:
-        created = s.created_at.strftime("%Y-%m-%d") if s.created_at else "N/A"
-        lines.append(f"  [{created}] {s.scenario_name}")
-
-    content = "\n".join(lines)
-    buf = io.BytesIO(content.encode("utf-8"))
-    filename = f"wealth-report-{today}.pdf"
+    buf = generate_pdf_report(current_user, db)
+    filename = f"wealth_report_{current_user.id}.pdf"
     return StreamingResponse(
         buf,
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
+# B2-5 â”€â”€ GET /api/v1/reports/csv
 @app.get("/api/v1/reports/csv")
 def download_csv_report(
-    type: str = "portfolio",
+    data_type: str = Query("portfolio", pattern="^(portfolio|goals|transactions)$"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
 ):
-    """Generate and stream a CSV report for portfolio positions."""
-    output = io.StringIO()
-    writer = csv.writer(output)
-    today = dt.now().strftime("%Y-%m-%d")
+    output = _io.StringIO()
+    writer = _csv.writer(output)
 
-    if type == "portfolio":
-        writer.writerow(["Symbol", "Units", "Avg Buy Price", "Current Value", "Cost Basis", "Gain/Loss", "Gain/Loss %"])
+    if data_type == "portfolio":
+        writer.writerow(["Symbol", "Company", "Asset Class", "Quantity", "Buy Price", "Current Value", "Last Price"])
         assets = db.query(models.Asset).filter(models.Asset.owner_id == current_user.id).all()
         for a in assets:
-            cost = round(a.quantity * a.buy_price, 2)
-            val = round(a.current_value or cost, 2)
-            gl = round(val - cost, 2)
-            gl_pct = round((gl / cost * 100) if cost > 0 else 0, 2)
-            writer.writerow([a.symbol, a.quantity, a.buy_price, val, cost, gl, gl_pct])
-    elif type == "goals":
-        writer.writerow(["Goal Name", "Type", "Target Amount", "Monthly Contribution", "Status", "Target Date"])
+            writer.writerow([a.symbol, a.company_name, a.asset_class, a.quantity, a.buy_price, a.current_value, a.last_price])
+
+    elif data_type == "goals":
+        writer.writerow(["Goal Name", "Type", "Target Amount", "Target Date", "Monthly Contribution", "Status"])
         goals = db.query(models.Goal).filter(models.Goal.user_id == current_user.id).all()
         for g in goals:
-            writer.writerow([
-                g.goal_name,
-                g.goal_type.value if hasattr(g.goal_type, 'value') else g.goal_type,
-                g.target_amount,
-                g.monthly_contribution,
-                g.status.value if hasattr(g.status, 'value') else g.status,
-                g.target_date.isoformat() if g.target_date else ""
-            ])
-    elif type == "simulations":
-        writer.writerow(["Scenario Name", "Created Date", "Assumptions", "Results Summary"])
-        sims = db.query(models.Simulation).filter(
-            models.Simulation.user_id == current_user.id
-        ).order_by(models.Simulation.created_at.desc()).all()
-        for s in sims:
-            created = s.created_at.strftime("%Y-%m-%d") if s.created_at else ""
-            writer.writerow([s.scenario_name, created, str(s.assumptions), str(s.results)])
+            writer.writerow([g.goal_name, g.goal_type.value if g.goal_type else "", g.target_amount, g.target_date, g.monthly_contribution, g.status.value if g.status else ""])
+
+    elif data_type == "transactions":
+        writer.writerow(["Date", "Type", "Symbol", "Quantity", "Amount"])
+        txns = db.query(models.Transaction).filter(models.Transaction.owner_id == current_user.id).order_by(models.Transaction.date.desc()).all()
+        for t in txns:
+            writer.writerow([t.date, t.transaction_type, t.asset_symbol, t.quantity, t.amount])
 
     output.seek(0)
-    filename = f"portfolio-{today}.csv"
+    filename = f"{data_type}_{current_user.id}.csv"
     return StreamingResponse(
-        io.BytesIO(output.getvalue().encode("utf-8")),
+        _io.BytesIO(output.getvalue().encode("utf-8")),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
