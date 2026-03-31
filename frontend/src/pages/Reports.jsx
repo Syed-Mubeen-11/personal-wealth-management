@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { FileText, Download, ChevronDown, ChevronUp, TrendingUp, Target, Activity } from 'lucide-react';
 
@@ -348,12 +348,12 @@ export default function Reports() {
     const [csvLoading, setCsvLoading] = useState(false);
     const [exportError, setExportError] = useState(null);
 
-    const downloadBlob = useCallback(async (url, filename, setLoading) => {
+    const downloadBlob = useCallback(async (url, filename, mimeType, setLoading) => {
         setLoading(true);
         setExportError(null);
         try {
             const res = await api.get(url, { responseType: 'blob' });
-            const blob = new Blob([res.data]);
+            const blob = new Blob([res.data], { type: mimeType });
             const href = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = href;
@@ -373,13 +373,15 @@ export default function Reports() {
         downloadBlob(
             '/api/v1/reports/pdf?scope=full',
             `wealth-report-${today()}.pdf`,
+            'application/pdf',
             setPdfLoading
         );
 
     const handleCSV = () =>
         downloadBlob(
-            '/api/v1/reports/csv?type=portfolio',
+            '/api/v1/reports/csv?data_type=portfolio',
             `portfolio-${today()}.csv`,
+            'text/csv',
             setCsvLoading
         );
 
