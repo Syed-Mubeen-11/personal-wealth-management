@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Routes
 from routes import auth_routes, profile_routes, finance_routes, investment_routes
-from routes import goal_routes, transaction_routes, simulation_routes, recommendation_routes
+from routes import goal_routes, transaction_routes, simulation_routes, recommendation_routes, rebalance_routes
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -44,6 +44,7 @@ app.include_router(investment_routes.router)
 app.include_router(transaction_routes.router)
 app.include_router(simulation_routes.router)
 app.include_router(recommendation_routes.router)
+app.include_router(rebalance_routes.router)
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):

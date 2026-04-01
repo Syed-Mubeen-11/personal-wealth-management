@@ -7,9 +7,8 @@ const Investments = () => {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   
-  // Updated state to include trade_type and fees
   const [formData, setFormData] = useState({
-    asset_type: 'Stock',
+    asset_type: 'Stock', // Default value
     symbol: '',
     units: '',
     avg_buy_price: '',
@@ -43,7 +42,6 @@ const Investments = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Payload now matches the updated InvestmentCreate schema
       const payload = {
         asset_type: formData.asset_type,
         symbol: formData.symbol.toUpperCase(),
@@ -55,12 +53,11 @@ const Investments = () => {
       
       await addInvestment(payload);
       
-      // Reset form but keep asset_type and trade_type preference
+      // Reset form but keep preference for asset_type and trade_type
       setFormData({ ...formData, symbol: '', units: '', avg_buy_price: '', fees: 0 });
       await fetchPortfolio(); 
       alert(`${payload.trade_type.toUpperCase()} order successful!`);
     } catch (err) {
-      // Capture the "Insufficient units" error from FastAPI
       const errorMsg = err.response?.data?.detail || String(err);
       alert("Trade Failed: " + errorMsg);
     } finally {
@@ -69,7 +66,7 @@ const Investments = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to remove this asset? (This deletes the record entirely)")) {
+    if (window.confirm("Are you sure you want to remove this asset?")) {
       try {
         await deleteInvestment(id);
         fetchPortfolio();
@@ -90,7 +87,6 @@ const Investments = () => {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-sm font-bold text-gray-500 uppercase">Manage Assets</h2>
             
-            {/* BUY/SELL Toggle */}
             <div className="flex bg-gray-100 p-1 rounded-xl">
               <button 
                 type="button"
@@ -106,18 +102,22 @@ const Investments = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            {/* FIXED SELECT DROPDOWN */}
             <select 
-              className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+              className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               value={formData.asset_type}
               onChange={(e) => setFormData({...formData, asset_type: e.target.value})}
             >
               <option value="Stock">Stock</option>
+              <option value="ETF">ETF (Equity/Gold)</option>
+              <option value="Bond">Bond / Debt</option>
               <option value="Crypto">Crypto</option>
-              <option value="Gold">Gold</option>
+              <option value="Gold">Physical Gold</option>
               <option value="Mutual Fund">Mutual Fund</option>
             </select>
+
             <input 
-              type="text" placeholder="Symbol" required
+              type="text" placeholder="Symbol (e.g. INFY.NS)" required
               className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
               value={formData.symbol}
               onChange={(e) => setFormData({...formData, symbol: e.target.value.toUpperCase()})}
@@ -142,7 +142,6 @@ const Investments = () => {
               placeholder="Fees (Optional)" 
               step="any"
               className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-              // If fees is 0 or empty, show empty string so placeholder appears
               value={formData.fees === 0 ? '' : formData.fees}
               onChange={(e) => setFormData({...formData, fees: e.target.value})}
             />
@@ -183,7 +182,7 @@ const Investments = () => {
                     </td>
                     <td className="px-6 py-4 text-gray-600">{inv.units}</td>
                     <td className="px-6 py-4 text-gray-600">₹{Number(inv.avg_buy_price).toLocaleString()}</td>
-                    <td className="px-6 py-4 font-semibold text-gray-800">₹{Number(inv.current_value).toLocaleString()}</td>
+                    <td className="px-6 py-4 font-semibold text-gray-800">₹{Number(inv.current_value || 0).toLocaleString()}</td>
                     <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => {

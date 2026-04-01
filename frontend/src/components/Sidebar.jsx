@@ -18,6 +18,7 @@ const Sidebar = () => {
     { name: 'Investments', path: '/investments', icon: '🏦' },
     { name: 'Portfolio', path: '/analytics', icon: '📈' },
     { name: 'Trade History', path: '/transactions', icon: '📜' },
+    { name: 'Rebalance', path: '/rebalance', icon: '⚖️' },
     { name: 'Profile', path: '/profile', icon: '👤' },
     { name: 'Simulation', path: '/simulation', icon: '🧪' },
     { name: 'Recommendations', path: '/recommendations', icon: '🧠' },

@@ -14,6 +14,7 @@ import Transactions from './pages/Transactions';
 import Profile from './pages/Profile';
 import Simulation from './pages/Simulation';
 import Recommendations from './pages/Recommendations';
+import RebalancePage from './pages/RebalancePage';
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -118,6 +119,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* NEW: Rebalance Engine Page */}
+      <Route
+        path="/rebalance"
+        element={
+          <ProtectedRoute>
+            <RebalancePage />
+          </ProtectedRoute>
+        }
+      />
 
       </Routes>
     </Router>
