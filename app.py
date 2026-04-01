@@ -3,6 +3,10 @@ import json
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import os
+from services.recommendation_service import generate_recommendation
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 app = Flask(__name__)
 
@@ -68,28 +72,30 @@ def create_simulations_table():
     conn.commit()
     conn.close()
 
-@app.route('/add_transaction', methods=['POST'])
+@app.route('/add_transaction', methods=['GET', 'POST'])
 def add_transaction():
-    user_id = request.form['user_id']
-    symbol = request.form['symbol']
-    type = request.form['type']
-    quantity = request.form['quantity']
-    price = request.form['price']
-    fees = request.form['fees']
+    if request.method == 'POST':
+        user_id = request.form['user_id']
+        symbol = request.form['symbol']
+        type = request.form['type']
+        quantity = request.form['quantity']
+        price = request.form['price']
+        fees = request.form['fees']   # ✅ new
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
 
-    cursor.execute('''
-        INSERT INTO transactions 
-        (user_id, symbol, type, quantity, price, fees)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (user_id, symbol, type, quantity, price, fees))
+        cursor.execute("""
+            INSERT INTO transactions (user_id, symbol, type, quantity, price, fees)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, symbol, type, quantity, price, fees))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
 
-    return "Transaction Added Successfully"
+        return redirect('/view_transactions')
+
+    return render_template('add_transaction.html')
 
 @app.route('/add_transaction_form')
 def add_transaction_form():
@@ -239,6 +245,19 @@ def users():
 
     return render_template('users.html', users=users_data)
 
+@app.route('/delete_users/<int:users_id>')
+def delete_users(users_id):
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM users WHERE id = ?", (users_id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect('/users')
+
 @app.route('/check_tables')
 def check_tables():
     conn = sqlite3.connect(DB_NAME)
@@ -282,6 +301,52 @@ def simulate():
 
     # 4. Return result
     return {"result": result}
+
+@app.route("/recommendation")
+def recommendation():
+    import sqlite3
+    import json
+
+    result = generate_recommendation(1)
+
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT INTO simulations (user_id, scenario_name, assumptions, results)
+    VALUES (?, ?, ?, ?)
+    """, (
+        1,
+        "Recommendation",
+        json.dumps({"risk": result["risk"]}),
+        json.dumps(result)
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return result
+
+@app.route("/view_recommendations")
+def view_recommendations():
+    import sqlite3
+
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM simulations")
+    data = cursor.fetchall()
+
+    conn.close()
+
+    return str(data)
+
+@app.route("/rebalance")
+def rebalance():
+    return {
+        "message": "Based on your allocation, reduce bonds and increase stocks.",
+        "status": "Rebalance suggestion generated"
+    }
 
 @app.route('/test')
 def test():

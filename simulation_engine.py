@@ -16,3 +16,13 @@ def calculate_future_value(monthly_contribution, annual_return, years, initial_a
         })
 
     return yearly_breakdown
+
+
+def get_recommendations(data):
+    # simple logic (temporary)
+    income = data.get("income", 0)
+
+    if income > 50000:
+        return {"plan": "Invest in stocks", "risk": "Medium"}
+    else:
+        return {"plan": "Save more, low risk investment", "risk": "Low"}

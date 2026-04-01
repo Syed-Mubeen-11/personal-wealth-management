@@ -1,28 +1,51 @@
-from fastapi import FastAPI, Depends
-import requests
-from sqlalchemy import create_engine, Column, Integer, String, Float
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel
+from sqlalchemy import create_engine, Column, Integer, String, Numeric, Date
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from typing import Optional, List
+import os
+from dotenv import load_dotenv
+from datetime import date
 
-app = FastAPI()
+# -----------------------
+# Load .env + DB connection
+# -----------------------
+load_dotenv()
 
-# ---------------- API KEY ----------------
-API_KEY = "3QLS5PH3W3H71DZT"
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
 
-# ---------------- DATABASE ----------------
-DATABASE_URL = "sqlite:///./stocks.db"
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
 engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
+
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
+
 Base = declarative_base()
 
-class Stock(Base):
-    __tablename__ = "stocks"
-
+# -----------------------
+# Goal Table Model
+# -----------------------
+class GoalDB(Base):
+    __tablename__ = "goal"
+    
     id = Column(Integer, primary_key=True, index=True)
-    symbol = Column(String)
-    last_price = Column(Float)
+    name = Column(String(100), nullable=False)
+    target_amount = Column(Numeric(10, 2), nullable=False)
+    current_amount = Column(Numeric(10, 2), default=0)
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
 
-Base.metadata.create_all(bind=engine)
+# -----------------------
+# FastAPI App
+# -----------------------
+app = FastAPI()
 
 def get_db():
     db = SessionLocal()
@@ -31,45 +54,63 @@ def get_db():
     finally:
         db.close()
 
-# ---------------- API CALL ----------------
-def get_stock_price(symbol):
-    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={API_KEY}"
-    response = requests.get(url)
-    return response.json()
+# -----------------------
+# Pydantic Model
+# -----------------------
+class Goal(BaseModel):
+    name: str
+    target_amount: float
+    current_amount: float = 0
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
-# ---------------- MAPPING ----------------
-def map_stock_data(data):
-    quote = data["Global Quote"]
+    class Config:
+        orm_mode = True
 
-    return {
-        "symbol": quote["01. symbol"],
-        "last_price": float(quote["05. price"])
-    }
-
-# ---------------- SAVE + GET ----------------
-@app.get("/stock/{symbol}")
-def get_stock(symbol: str, db: Session = Depends(get_db)):
-
-    data = get_stock_price(symbol)
-
-    if "Note" in data:
-        return {"error": "API limit reached"}
-
-    mapped = map_stock_data(data)
-
-    # 🔥 DB lo save
-    new_stock = Stock(
-        symbol=mapped["symbol"],
-        last_price=mapped["last_price"]
-    )
-
-    db.add(new_stock)
+# -----------------------
+# CRUD APIs
+# -----------------------
+@app.post("/goals", response_model=Goal)
+def create_goal(goal: Goal, db: Session = Depends(get_db)):
+    db_goal = GoalDB(**goal.dict())
+    db.add(db_goal)
     db.commit()
-    db.refresh(new_stock)
+    db.refresh(db_goal)
+    return db_goal
 
-    return mapped
+@app.get("/goals", response_model=List[Goal])
+def get_goals(db: Session = Depends(get_db)):
+    return db.query(GoalDB).all()
 
-# ---------------- FETCH ALL ----------------
-@app.get("/stocks")
-def get_all_stocks(db: Session = Depends(get_db)):
-    return db.query(Stock).all()
+@app.get("/goals/{goal_id}", response_model=Goal)
+def get_goal(goal_id: int, db: Session = Depends(get_db)):
+    goal = db.query(GoalDB).filter(GoalDB.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return goal
+
+@app.put("/goals/{goal_id}", response_model=Goal)
+def update_goal(goal_id: int, goal: Goal, db: Session = Depends(get_db)):
+    db_goal = db.query(GoalDB).filter(GoalDB.id == goal_id).first()
+    if not db_goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    for key, value in goal.dict().items():
+        setattr(db_goal, key, value)
+    db.commit()
+    db.refresh(db_goal)
+    return db_goal
+
+@app.delete("/goals/{goal_id}")
+def delete_goal(goal_id: int, db: Session = Depends(get_db)):
+    db_goal = db.query(GoalDB).filter(GoalDB.id == goal_id).first()
+    if not db_goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    db.delete(db_goal)
+    db.commit()
+    return {"deleted_goal_id": goal_id}
+
+# -----------------------
+# Create tables only if running directly
+# -----------------------
+if __name__ == "__main__":
+    Base.metadata.create_all(bind=engine)
