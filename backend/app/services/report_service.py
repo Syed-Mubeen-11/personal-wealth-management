@@ -176,15 +176,16 @@ def _build_recommendations(user, db: Session, styles) -> list:
         elements.append(_body("Your portfolio is well balanced — no changes needed.", styles))
         return elements
 
-    header = ["Asset Class", "Current %", "Target %", "Delta %", "Action"]
+    header = ["Asset Type", "Action", "Symbol", "Qty Change", "Est. Value", "Drift Impact"]
     data: List[list] = [header]
     for s in result["suggestions"]:
         data.append([
-            s["asset_class"],
-            f"{s['current_pct']:.1f}%",
-            f"{s['target_pct']:.1f}%",
-            f"{s['delta_pct']:+.1f}%",
-            s["action"],
+            s.get("asset_type", ""),
+            s.get("action", ""),
+            s.get("symbol", ""),
+            f"{s.get('qty_change', 0):,.2f}",
+            f"${s.get('estimated_value', 0):,.2f}",
+            f"{s.get('drift_impact', 0):+.1f}%",
         ])
 
     tbl = Table(data, repeatRows=1)
