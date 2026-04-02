@@ -303,6 +303,35 @@ def get_stock_price(symbol: str):
         raise HTTPException(status_code=404, detail="Invalid symbol")
 
 
+# --- MARKET INDICES (Dashboard banner) ---
+@app.get("/api/market/indices")
+def get_market_indices():
+    """Return daily change for major indices (S&P 500, DJIA, NASDAQ)."""
+    indices = [
+        {"symbol": "^GSPC", "name": "S&P 500"},
+        {"symbol": "^DJI",  "name": "Dow Jones"},
+        {"symbol": "^IXIC", "name": "NASDAQ"},
+    ]
+    results = []
+    for idx in indices:
+        try:
+            ticker = yf.Ticker(idx["symbol"])
+            info = ticker.info
+            price = info.get("regularMarketPrice") or info.get("previousClose") or 0
+            prev = info.get("previousClose") or price
+            change = price - prev
+            pct = (change / prev * 100) if prev else 0
+            results.append({
+                "name": idx["name"],
+                "price": round(price, 2),
+                "change": round(change, 2),
+                "change_pct": round(pct, 2),
+            })
+        except Exception:
+            results.append({"name": idx["name"], "price": 0, "change": 0, "change_pct": 0})
+    return results
+
+
 # ---------------------------------------------------------
 # TRANSACTIONS CRUD
 # ---------------------------------------------------------

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 
 // Import your brand new badge!
 import RiskProfileBadge from "../components/RiskProfileBadge";
@@ -34,6 +35,10 @@ export default function Dashboard() {
       last_updated: null,
     },
   });
+  const [indices, setIndices] = useState([]);
+  const [indicesLoading, setIndicesLoading] = useState(true);
+  const [liveValue, setLiveValue] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // --- YOUR API CALLS ---
   const loadData = useCallback(async () => {
@@ -47,12 +52,48 @@ export default function Dashboard() {
       setSummary(sumRes.data);
       setUser(userRes.data);
       setPortfolio(portRes.data);
+
+      // Compute live portfolio value from positions
+      const positions = portRes.data.positions || portRes.data.assets || [];
+      if (positions.length > 0) {
+        const total = positions.reduce((acc, p) => {
+          const val = p.current_value || p.market_value || (p.quantity || 0) * (p.current_price || p.last_price || p.buy_price || 0);
+          return acc + val;
+        }, 0);
+        setLiveValue(total);
+      }
     } catch (err) {
       console.error("Error loading dashboard", err);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  // --- MARKET INDICES (non-blocking) ---
+  const loadIndices = useCallback(async () => {
+    setIndicesLoading(true);
+    try {
+      const res = await api.get("/api/market/indices");
+      setIndices(res.data);
+    } catch {
+      // Silently fail — banner just won't show
+    } finally {
+      setIndicesLoading(false);
+    }
+  }, []);
+
+  // --- REFRESH LIVE PRICES ---
+  const refreshPrices = async () => {
+    setRefreshing(true);
+    try {
+      await api.post("/api/refresh/user");
+      await loadData();
+    } catch {
+      // fail silently
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // --- AUTHENTICATION CHECK ---
   useEffect(() => {
@@ -62,8 +103,9 @@ export default function Dashboard() {
     } else {
       setIsAuth(true);
       loadData();
+      loadIndices();
     }
-  }, [navigate, loadData]);
+  }, [navigate, loadData, loadIndices]);
 
   // --- YOUR CHART DATA ---
   const pieData = {
@@ -136,8 +178,50 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {/* Market Indices Banner */}
+        {!indicesLoading && indices.length > 0 && (
+          <div className="bg-[#1B3C53] rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+            <span className="text-white/70 text-xs font-bold uppercase tracking-widest">Markets Today</span>
+            <div className="flex flex-wrap gap-6">
+              {indices.map((idx) => (
+                <div key={idx.name} className="flex items-center gap-2">
+                  <span className="text-white font-semibold text-sm">{idx.name}</span>
+                  <span className="text-white/80 text-sm">${idx.price?.toLocaleString()}</span>
+                  <span className={`flex items-center gap-1 text-xs font-bold ${idx.change_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {idx.change_pct >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                    {idx.change_pct >= 0 ? '+' : ''}{idx.change_pct}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* KPI Cards (Dynamic Financial Data) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* Live Portfolio Value */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-gray-500 text-sm font-bold uppercase">
+                Live Portfolio
+              </h3>
+              <button
+                onClick={refreshPrices}
+                disabled={refreshing}
+                className="text-gray-400 hover:text-[#1B3C53] transition"
+                title="Refresh prices"
+              >
+                <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+              </button>
+            </div>
+            <p className="text-3xl font-bold text-[#1B3C53]">
+              ${(liveValue ?? portfolio.overview?.total_portfolio_value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wide">
+              {refreshing ? 'Refreshing…' : 'Based on market prices'}
+            </p>
+          </div>
+
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h3 className="text-gray-500 text-sm mb-1 font-bold uppercase">
               Total Assets
