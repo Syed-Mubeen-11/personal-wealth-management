@@ -54,3 +54,7 @@ logs/
 *.temp
 *.bak
 .vercel
+
+# --- Deploy scripts (contain tokens) ---
+deploy.ps1
+start-all.ps1

@@ -9,12 +9,16 @@ import {
     Bot, 
     Target,
     Zap,
-    FileText
+    FileText,
+    Moon,
+    Sun
 } from "lucide-react";
+import { useTheme } from '../ThemeContext';
 
 export default function Layout({ children }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { dark, toggle } = useTheme();
 
     const handleLogout = () => {
         localStorage.removeItem("jwt");
@@ -24,7 +28,7 @@ export default function Layout({ children }) {
     const isActive = (path) => location.pathname === path;
 
     return (
-        <div className="min-h-screen bg-[#F0F2F5] flex">
+        <div className="min-h-screen bg-[#F0F2F5] dark:bg-gray-900 flex transition-colors duration-300">
             {/* GLOBAL SIDEBAR */}
             <aside className="w-64 bg-[#1B3C53] text-white flex flex-col p-6 hidden md:flex h-screen sticky top-0">
                 <h2 className="text-2xl font-bold mb-10 text-center">WEALTH.AI</h2>
@@ -57,15 +61,24 @@ export default function Layout({ children }) {
                 </nav>
 
                 <button
+                    onClick={toggle}
+                    className="flex items-center gap-3 p-3 text-gray-300 hover:text-white hover:bg-[#234C6A] rounded-lg transition"
+                    aria-label="Toggle dark mode"
+                >
+                    {dark ? <Sun size={20} /> : <Moon size={20} />}
+                    {dark ? 'Light Mode' : 'Dark Mode'}
+                </button>
+
+                <button
                     onClick={handleLogout}
-                    className="flex items-center gap-3 p-3 mt-8 bg-red-500 hover:bg-red-600 text-white rounded-lg transition justify-center font-bold"
+                    className="flex items-center gap-3 p-3 mt-4 bg-red-500 hover:bg-red-600 text-white rounded-lg transition justify-center font-bold"
                 >
                     <LogOut size={20} /> Logout
                 </button>
             </aside>
 
             {/* DYNAMIC PAGE CONTENT */}
-            <main className="flex-1 p-8 overflow-y-auto">
+            <main className="flex-1 p-8 overflow-y-auto dark:text-gray-100 transition-colors duration-300">
                 {children}
             </main>
         </div>
