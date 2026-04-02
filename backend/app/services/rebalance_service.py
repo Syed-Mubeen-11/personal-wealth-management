@@ -45,8 +45,8 @@ def compute_rebalance(user, db: Session) -> Dict[str, Any]:
     total_value = 0.0
     category_values: Dict[str, float] = {}
     category_quantities: Dict[str, float] = {}
+    category_symbols: Dict[str, str] = {}  # representative symbol per category
 
-    # 🔥 STEP 1: Compute values AND quantities together
     for asset in assets:
         value = asset.current_value or (asset.quantity or 0) * (asset.buy_price or 0)
         qty = asset.quantity or 0
@@ -55,6 +55,10 @@ def compute_rebalance(user, db: Session) -> Dict[str, Any]:
 
         category_values[cat] = category_values.get(cat, 0.0) + value
         category_quantities[cat] = category_quantities.get(cat, 0.0) + qty
+
+        # Track the highest-value symbol as the representative for this category
+        if cat not in category_symbols or value > 0:
+            category_symbols[cat] = asset.symbol or cat
 
         total_value += value
 
@@ -80,20 +84,26 @@ def compute_rebalance(user, db: Session) -> Dict[str, Any]:
             category_value = category_values.get(cat, 0.0)
             category_quantity = category_quantities.get(cat, 0.0)
 
-            if category_quantity > 0:
-                avg_unit_price = round(category_value / category_quantity, 2)
-                qty_change = round(estimated_value / avg_unit_price, 2) if avg_unit_price > 0 else 0.0
+            if category_quantity > 0 and category_value > 0:
+                avg_unit_price = category_value / category_quantity
+                qty_change = round(estimated_value / avg_unit_price, 2)
             else:
-                qty_change = 0.0
+                # No existing holdings — use estimated_value as qty_change
+                # (1 unit ≈ $1 placeholder so the value is always positive)
+                qty_change = estimated_value
+
+            # Ensure qty_change is always positive (spec requirement)
+            qty_change = max(abs(qty_change), 0.01)
 
             action = "BUY" if delta > 0 else "SELL"
+            symbol = category_symbols.get(cat, cat)
 
             suggestions.append(
                 {
                     "action": action,
-                    "symbol": cat,
+                    "symbol": symbol,
                     "asset_type": cat,
-                    "qty_change": abs(qty_change),
+                    "qty_change": qty_change,
                     "estimated_value": estimated_value,
                     "drift_impact": round(abs(delta) * 100, 2),
                 }

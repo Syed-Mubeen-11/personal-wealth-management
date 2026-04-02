@@ -10,9 +10,8 @@ TEMPLATES: Dict[str, Dict[str, float]] = {
 
 def get_target_allocation(risk_profile: str) -> Dict[str, float]:
     """B1-1: Get target by risk profile"""
-    if risk_profile not in TEMPLATES:
-        return TEMPLATES["moderate"]
-    return TEMPLATES[risk_profile]
+    key = risk_profile.strip().lower() if risk_profile else "moderate"
+    return TEMPLATES.get(key, TEMPLATES["moderate"])
 
 def compute_recommendation(user, db: Session) -> Dict[str, Any]:
     """B1-1: Compute and SAVE a recommendation based on risk profile and current portfolio."""
