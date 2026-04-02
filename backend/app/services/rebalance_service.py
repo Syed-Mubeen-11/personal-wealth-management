@@ -12,14 +12,16 @@ def get_category(asset_class: str) -> str:
 
     normalized = asset_class.strip().lower()
 
-    if "etf" in normalized:
+    if "mutual" in normalized or "fund" in normalized:
+        return "Mutual Funds"
+    elif "etf" in normalized:
         return "ETFs"
     elif "bond" in normalized:
         return "Bonds"
     elif "cash" in normalized:
         return "Cash"
     elif "crypto" in normalized or "bitcoin" in normalized:
-        return "Stocks"
+        return "Crypto"
     else:
         return "Stocks"
 
@@ -73,30 +75,27 @@ def compute_rebalance(user, db: Session) -> Dict[str, Any]:
         delta = target_pct - current_pct
 
         if abs(delta) >= _THRESHOLD:
-            estimated_value = round(delta * total_value, 2)
+            estimated_value = round(abs(delta) * total_value, 2)
 
             category_value = category_values.get(cat, 0.0)
             category_quantity = category_quantities.get(cat, 0.0)
 
-            # 🔥 FIX: handle zero quantity properly
             if category_quantity > 0:
                 avg_unit_price = round(category_value / category_quantity, 2)
-                qty_change = round(estimated_value / avg_unit_price, 2)
+                qty_change = round(estimated_value / avg_unit_price, 2) if avg_unit_price > 0 else 0.0
             else:
-                avg_unit_price = 0.0
-                qty_change = 0.0  # no existing units → cannot compute
+                qty_change = 0.0
 
-            action = "Increase" if delta > 0 else "Decrease"
+            action = "BUY" if delta > 0 else "SELL"
 
             suggestions.append(
                 {
-                    "asset_class": cat,
-                    "current_pct": round(current_pct * 100, 2),
-                    "target_pct": round(target_pct * 100, 2),
-                    "delta_pct": round(delta * 100, 2),
+                    "action": action,
+                    "symbol": cat,
+                    "asset_type": cat,
+                    "qty_change": abs(qty_change),
                     "estimated_value": estimated_value,
-                    "qty_change": qty_change,
-                    "action": f"{action} {cat} by {abs(round(delta * 100, 2))}%",
+                    "drift_impact": round(abs(delta) * 100, 2),
                 }
             )
 

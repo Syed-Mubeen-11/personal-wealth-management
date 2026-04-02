@@ -172,8 +172,10 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
 @app.post("/login")
 def login_user(user: schemas.UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
-    if not db_user or not verify_password(user.password, db_user.password):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not db_user:
+        raise HTTPException(status_code=404, detail="This email is not registered. Please register first.")
+    if not verify_password(user.password, db_user.password):
+        raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -200,6 +202,8 @@ def update_profile(profile_update: UserProfileUpdate, db: Session = Depends(get_
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
+    if "risk_profile" in update_data:
+        _invalidate_rebalance_cache(current_user.id)
     return current_user
 
 # --- PROFILE & RISK MANAGEMENT ROUTES ---
@@ -257,6 +261,7 @@ def update_profile_risk(
         risk_value = data['risk_profile'].lower()
         if risk_value in ['conservative', 'moderate', 'aggressive']:
             current_user.risk_profile = risk_value
+            _invalidate_rebalance_cache(current_user.id)
     
     if 'kyc_status' in data and data['kyc_status']:
         kyc_value = data['kyc_status'].lower()
@@ -364,6 +369,7 @@ def create_transaction(
 
     db.commit()
     db.refresh(db_txn)
+    _invalidate_rebalance_cache(user.id)
     return db_txn
 
 
@@ -749,6 +755,7 @@ def buy_asset(asset: AssetCreate, db: Session = Depends(get_db), user: models.Us
     
     db.commit()
     db.refresh(db_asset)
+    _invalidate_rebalance_cache(user.id)
     return db_asset
 
 @app.get("/summary")
@@ -1865,6 +1872,15 @@ except Exception:
     _redis = None
 
 _REBALANCE_TTL = 1800  # 30 minutes
+
+
+def _invalidate_rebalance_cache(user_id: int):
+    """Clear cached rebalance data so the next request computes fresh results."""
+    if _redis is not None:
+        try:
+            _redis.delete(f"rebalance:{user_id}")
+        except Exception:
+            pass
 
 
 # B2-2 â”€â”€ GET /api/v1/recommendations/rebalance

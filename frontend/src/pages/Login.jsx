@@ -7,12 +7,14 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [showRegisterLink, setShowRegisterLink] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setShowRegisterLink(false);
     setLoading(true);
     try {
       // Uses your secure API instance instead of hardcoded localhost
@@ -25,7 +27,10 @@ export default function Login() {
         navigate("/"); // Smooth React Router transition
       }
     } catch (err) {
-      setError(err?.response?.data?.detail || "Login failed");
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail || "Login failed";
+      setError(detail);
+      setShowRegisterLink(status === 404);
     } finally {
       setLoading(false);
     }
@@ -64,7 +69,19 @@ export default function Login() {
             </button>
           </div>
 
-          {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
+          {error && (
+            <div className="text-sm font-medium">
+              <p className="text-red-500">{error}</p>
+              {showRegisterLink && (
+                <p className="mt-1 text-gray-600">
+                  Don't have an account?{" "}
+                  <Link to="/register" className="text-[#1B3C53] font-semibold hover:underline">
+                    Register here
+                  </Link>
+                </p>
+              )}
+            </div>
+          )}
 
           <button
             type="submit"

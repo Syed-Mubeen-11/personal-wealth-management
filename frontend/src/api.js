@@ -36,7 +36,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    const url = error.config?.url || "";
+    const isAuthRoute = url.includes("/login") || url.includes("/register");
+    if (error.response && error.response.status === 401 && !isAuthRoute) {
       localStorage.removeItem("jwt");
       window.location.href = "/login";
     }
