@@ -30,6 +30,14 @@ export default function RecommendationCard({
 }) {
   const [isBarView, setIsBarView] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [expandHeight, setExpandHeight] = useState(0);
+  const expandRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (expandRef.current) {
+      setExpandHeight(isExpanded ? expandRef.current.scrollHeight : 0);
+    }
+  }, [isExpanded, isBarView]);
 
   // Normalize data safely
   const rawEntries = Object.entries(suggestedAllocation || {});
@@ -125,70 +133,101 @@ export default function RecommendationCard({
           </div>
         </div>
 
-        {/* Charts & Analytics Section */}
+        {/* View Full Breakdown — expansion toggle */}
         {chartData.length > 0 && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 items-center bg-[#F8FAFC]/50 -mx-8 -mb-8 sm:-mx-10 sm:-mb-10 p-8 sm:p-10 mt-8 border-t border-gray-50">
-            <div className="order-2 xl:order-1">
-              <div className="flex justify-between items-end mb-6 pb-2 border-b border-gray-200">
-                <h4 className="font-bold text-[#1B3C53] text-[10px] uppercase tracking-widest opacity-60">Target Model</h4>
-                <button 
-                  onClick={() => setIsBarView(!isBarView)}
-                  className="text-[9px] font-bold text-gray-400 hover:text-[#1B3C53] transition uppercase tracking-widest flex items-center gap-1.5"
-                >
-                  {isBarView ? <PieChartIcon size={12} /> : <BarChart2 size={12} />}
-                  {isBarView ? 'Radial' : 'Linear'}
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                {chartData.map((item, idx) => (
-                  <div key={idx} className="group">
-                    <div className="flex justify-between mb-1.5">
-                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{item.name}</span>
-                      <span className="text-[11px] font-bold text-[#1B3C53]">{item.value.toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200/50 h-1 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full transition-all duration-1000 ease-out" 
-                        style={{ 
-                          width: `${item.value}%`, 
-                          backgroundColor: COLORS[idx % COLORS.length] 
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="w-full flex items-center justify-center gap-2 py-4 mt-4 text-[11px] font-bold text-[#1B3C53] uppercase tracking-widest hover:bg-gray-50 rounded-xl transition-colors"
+              aria-expanded={isExpanded}
+            >
+              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              {isExpanded ? 'Hide Breakdown' : 'View Full Breakdown'}
+            </button>
 
-            <div className="order-1 xl:order-2 h-[280px] sm:h-[320px] relative">
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center">
-                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Optimized</p>
-                  <p className="text-xl font-black text-[#1B3C53] leading-none">AI</p>
+            <div
+              ref={expandRef}
+              style={{ maxHeight: `${expandHeight}px` }}
+              className="overflow-hidden transition-all duration-500 ease-in-out"
+            >
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 items-center bg-[#F8FAFC]/50 -mx-8 -mb-8 sm:-mx-10 sm:-mb-10 p-8 sm:p-10 mt-4 border-t border-gray-50">
+                <div className="order-2 xl:order-1">
+                  <div className="flex justify-between items-end mb-6 pb-2 border-b border-gray-200">
+                    <h4 className="font-bold text-[#1B3C53] text-[10px] uppercase tracking-widest opacity-60">Target Model</h4>
+                    <button
+                      onClick={() => setIsBarView(!isBarView)}
+                      className="text-[9px] font-bold text-gray-400 hover:text-[#1B3C53] transition uppercase tracking-widest flex items-center gap-1.5"
+                    >
+                      {isBarView ? <PieChartIcon size={12} /> : <BarChart2 size={12} />}
+                      {isBarView ? 'Radial' : 'Linear'}
+                    </button>
+                  </div>
+
+                  {/* Allocation breakdown table */}
+                  <div className="space-y-3">
+                    {chartData.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{item.name}</span>
+                        </div>
+                        <span className="text-[11px] font-bold text-[#1B3C53]">{item.value.toFixed(1)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="order-1 xl:order-2 h-[280px] sm:h-[320px] relative">
+                  {isBarView ? (
+                    /* Recharts stacked BarChart */
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10 }} />
+                        <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fontWeight: 600 }} width={80} />
+                        <Tooltip formatter={(v) => `${v.toFixed(1)}%`} />
+                        <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                          {chartData.map((entry, index) => (
+                            <Cell key={`bar-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                          <LabelList dataKey="value" position="right" formatter={(v) => `${v.toFixed(1)}%`} style={{ fontSize: 10, fontWeight: 700 }} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    /* PieChart doughnut */
+                    <>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="text-center">
+                          <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Optimized</p>
+                          <p className="text-xl font-black text-[#1B3C53] leading-none">AI</p>
+                        </div>
+                      </div>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius="65%"
+                            outerRadius="90%"
+                            paddingAngle={4}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </>
+                  )}
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="65%"
-                    outerRadius="90%"
-                    paddingAngle={4}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>

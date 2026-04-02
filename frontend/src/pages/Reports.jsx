@@ -243,23 +243,31 @@ function GoalsSection() {
 
 // ── C. Simulation History ─────────────────────────────────────────────────────
 function SimulationsSection() {
+    const PAGE_SIZE = 10;
     const [sims, setSims] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [expanded, setExpanded] = useState(null);
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const res = await api.get('/api/simulations?limit=50');
-                setSims(res.data.data || []);
-            } catch {
-                setError('Failed to load simulation history.');
-            } finally {
-                setLoading(false);
-            }
-        })();
+    const fetchPage = useCallback(async (p) => {
+        setLoading(true);
+        try {
+            const offset = (p - 1) * PAGE_SIZE;
+            const res = await api.get(`/api/simulations?limit=${PAGE_SIZE}&offset=${offset}`);
+            setSims(res.data.data || []);
+            setTotal(res.data.total ?? res.data.data?.length ?? 0);
+        } catch {
+            setError('Failed to load simulation history.');
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { fetchPage(page); }, [page, fetchPage]);
+
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
     const toggle = (id) => setExpanded(prev => (prev === id ? null : id));
 
@@ -338,6 +346,31 @@ function SimulationsSection() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <span className="text-xs text-gray-400">
+                        Page {page} of {totalPages} ({total} total)
+                    </span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page <= 1}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                        >
+                            Previous
+                        </button>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page >= totalPages}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
         </Section>
     );
 }
@@ -346,6 +379,7 @@ function SimulationsSection() {
 export default function Reports() {
     const [pdfLoading, setPdfLoading] = useState(false);
     const [csvLoading, setCsvLoading] = useState(false);
+    const [csvScope, setCsvScope] = useState('portfolio');
     const [exportError, setExportError] = useState(null);
 
     const downloadBlob = useCallback(async (url, filename, mimeType, setLoading) => {
@@ -379,8 +413,8 @@ export default function Reports() {
 
     const handleCSV = () =>
         downloadBlob(
-            '/api/v1/reports/csv?data_type=portfolio',
-            `portfolio-${today()}.csv`,
+            `/api/v1/reports/csv?data_type=${csvScope}`,
+            `${csvScope}-${today()}.csv`,
             'text/csv',
             setCsvLoading
         );
@@ -404,6 +438,15 @@ export default function Reports() {
                         loading={pdfLoading}
                         variant="primary"
                     />
+                    <select
+                        value={csvScope}
+                        onChange={(e) => setCsvScope(e.target.value)}
+                        className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#1B3C53] font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3C53]/20"
+                    >
+                        <option value="portfolio">Portfolio</option>
+                        <option value="goals">Goals</option>
+                        <option value="transactions">Transactions</option>
+                    </select>
                     <ExportButton
                         label="Export CSV"
                         onClick={handleCSV}

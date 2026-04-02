@@ -24,26 +24,35 @@ def compute_recommendation(user, db: Session) -> Dict[str, Any]:
 
     # Get target allocation
     target = get_target_allocation(risk_profile)
-    
+
     # Get portfolio gap
     rebalance = compute_rebalance(user, db)
-    
-    # Generate text
+
+    # Generate detailed recommendation text from suggestions
     suggestions = rebalance.get("suggestions", [])
     if not suggestions:
         rec_text = "Your portfolio is perfectly balanced! No action needed at this time."
     else:
-        rec_text = f"Based on your {risk_profile} risk profile: "
-        actions = [s["action"] for s in suggestions]
-        rec_text += ", ".join(actions) + "."
+        parts = []
+        for s in suggestions:
+            parts.append(
+                f"{s['action']} {s['symbol']} ({s['asset_type']}) — "
+                f"{s['qty_change']} units ≈ ${s['estimated_value']:,.2f} "
+                f"(drift {s['drift_impact']:.1f}%)"
+            )
+        rec_text = (
+            f"Based on your {risk_profile} risk profile, we recommend "
+            f"the following adjustments to realign your portfolio: "
+            + "; ".join(parts)
+            + "."
+        )
 
-    # Protect against multiple identical recommendations if needed, but for now just save
     rec = models.Recommendation(
         user_id=user.id,
         title=f"{risk_profile.capitalize()} Risk Recommendation",
         recommendation_text=rec_text,
         suggested_allocation=target,
-        is_read=0
+        is_read=0,
     )
     db.add(rec)
     db.commit()
@@ -55,5 +64,5 @@ def compute_recommendation(user, db: Session) -> Dict[str, Any]:
         "recommendation_text": rec.recommendation_text,
         "suggested_allocation": rec.suggested_allocation,
         "is_read": False,
-        "created_at": rec.created_at
+        "created_at": rec.created_at,
     }

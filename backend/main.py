@@ -1776,16 +1776,32 @@ def refresh_prices():
 
 # ===================== BE-1 RECOMMENDATIONS =====================
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response as _FastAPIResponse
 from app.services.allocation_engine import compute_recommendation
 
 router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendations"])
 
-@router.post("/generate", response_model=schemas.RecommendationOut)
+@router.post("/generate", response_model=schemas.RecommendationOut, responses={304: {"description": "Already generated within 24 h"}})
 def generate_recommendation(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """B1-2: Generate recommendation for current user"""
+    """B1-2: Generate recommendation with 24-hour idempotency."""
+    from datetime import timedelta
+
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    recent = (
+        db.query(models.Recommendation)
+        .filter(
+            models.Recommendation.user_id == current_user.id,
+            models.Recommendation.created_at >= cutoff,
+        )
+        .order_by(models.Recommendation.created_at.desc())
+        .first()
+    )
+    if recent:
+        return _FastAPIResponse(status_code=304)
+
     return compute_recommendation(current_user, db)
 
 @router.get("/", response_model=schemas.RecommendationListOut)
