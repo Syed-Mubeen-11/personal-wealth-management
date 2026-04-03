@@ -2,16 +2,16 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, User, Target, Briefcase,
-  BarChart3, LogOut, TrendingUp, ChevronDown, ChevronRight
+  LogOut, TrendingUp, Sparkles, FileText
 } from 'lucide-react'
-import { useState } from 'react'
 
 const NAV = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/profile',   icon: User,            label: 'Profile & Risk Management' },
-  { to: '/goals',     icon: Target,          label: 'Goals' },
-  { to: '/portfolio', icon: Briefcase,       label: 'Portfolio & Transaction' },
-  { to: '/reports',   icon: BarChart3,       label: 'Recommendations' },
+  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/profile',         icon: User,            label: 'Profile & Risk' },
+  { to: '/goals',           icon: Target,          label: 'Goals' },
+  { to: '/portfolio',       icon: Briefcase,       label: 'Portfolio' },
+  { to: '/recommendations', icon: Sparkles,        label: 'Recommendations' },
+  { to: '/reports',         icon: FileText,        label: 'Reports' },
 ]
 
 export default function Sidebar({ onClose }) {
@@ -32,7 +32,7 @@ export default function Sidebar({ onClose }) {
             style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}>
             <TrendingUp size={17} className="text-white" />
           </div>
-          <span className="font-display font-bold text-xl"
+          <span className="font-bold text-xl"
             style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             WealthApp
           </span>
@@ -40,7 +40,7 @@ export default function Sidebar({ onClose }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-4 py-5 space-y-1 overflow-y-auto" aria-label="Main navigation">
         {NAV.map(item => (
           <NavLink
             key={item.to}
@@ -54,7 +54,7 @@ export default function Sidebar({ onClose }) {
         ))}
       </nav>
 
-      {/* User */}
+      {/* User info + logout */}
       <div className="px-4 py-4 border-t space-y-1" style={{ borderColor: 'var(--bg-border)' }}>
         <div className="flex items-center gap-3 px-3 py-3 rounded-xl" style={{ background: 'var(--bg-card)' }}>
           <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
@@ -66,11 +66,7 @@ export default function Sidebar({ onClose }) {
             <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{user?.email}</p>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="sidebar-item w-full"
-          style={{ color: '#f43f5e' }}
-        >
+        <button onClick={handleLogout} className="sidebar-item w-full" style={{ color: '#f43f5e' }} aria-label="Logout">
           <LogOut size={16} />
           <span>Logout</span>
         </button>

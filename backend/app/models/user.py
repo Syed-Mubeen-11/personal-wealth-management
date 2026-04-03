@@ -8,6 +8,7 @@ class RiskProfile(str, enum.Enum):
     aggressive = "aggressive"
 
 class KycStatus(str, enum.Enum):
+    pending = "pending"
     unverified = "unverified"
     verified = "verified"
 

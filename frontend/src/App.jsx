@@ -10,7 +10,9 @@ import ProfilePage from './pages/ProfilePage'
 import GoalsPage from './pages/GoalsPage'
 import GoalDetailsPage from './pages/GoalDetailsPage'
 import PortfolioPage from './pages/PortfolioPage'
-import RecommendationsPage from './pages/RecommendationsPage'   // ← FE-1
+import RecommendationsPage from './pages/RecommendationsPage'
+import RebalancePage from './pages/RebalancePage'
+import ReportsPage from './pages/ReportsPage'
 import { NotFoundPage } from './pages/PlaceholderPages'
 
 export default function App() {
@@ -28,8 +30,9 @@ export default function App() {
             <Route path="/goals/:id"        element={<GoalDetailsPage />} />
             <Route path="/portfolio"        element={<PortfolioPage />} />
             <Route path="/transactions"     element={<PortfolioPage />} />
-            <Route path="/reports"          element={<RecommendationsPage />} />   {/* FE-1 */}
-            <Route path="/recommendations"  element={<RecommendationsPage />} />   {/* FE-1 alias */}
+            <Route path="/recommendations"  element={<RecommendationsPage />} />
+            <Route path="/rebalance"        element={<RebalancePage />} />
+            <Route path="/reports"          element={<ReportsPage />} />
           </Route>
 
           <Route path="/"  element={<Navigate to="/dashboard" replace />} />

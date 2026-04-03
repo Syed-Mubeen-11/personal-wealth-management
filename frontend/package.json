@@ -8,11 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx"
-    "test": "vitest",
-    "test:run": "vitest run"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.95.2",
+    "@tanstack/react-query": "^5.96.1",
     "axios": "^1.7.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.383.0",
@@ -22,18 +20,13 @@
     "recharts": "^2.12.7"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
-    "jsdom": "^29.0.1",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
-    "vite": "^5.2.13",
-    "vitest": "^4.1.2"
+    "vite": "^5.2.13"
   }
 }
