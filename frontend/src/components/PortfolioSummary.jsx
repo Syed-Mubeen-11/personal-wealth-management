@@ -16,6 +16,11 @@ function PortfolioSummary({ investments = [] }) {
 
   const profit = totalValue - totalInvested;
 
+  // Helper function to format numbers to 2 decimal places
+  const formatCurrency = (value) => {
+    return value.toFixed(2);
+  };
+
   const card = `p-6 rounded-xl shadow ${darkMode ? "bg-gray-800" : "bg-white"}`;
   const title = `text-lg font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`;
   const value = `text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`;
@@ -25,18 +30,18 @@ function PortfolioSummary({ investments = [] }) {
 
       <div className={card}>
         <h2 className={title}>Total Invested</h2>
-        <p className={value}>₹{totalInvested}</p>
+        <p className={value}>₹{formatCurrency(totalInvested)}</p>
       </div>
 
       <div className={card}>
         <h2 className={title}>Portfolio Value</h2>
-        <p className={value}>₹{totalValue}</p>
+        <p className={value}>₹{formatCurrency(totalValue)}</p>
       </div>
 
       <div className={card}>
         <h2 className={title}>Profit / Loss</h2>
         <p className={`text-2xl font-bold ${profit >= 0 ? "text-green-500" : "text-red-500"}`}>
-          ₹{profit}
+          ₹{formatCurrency(profit)}
         </p>
       </div>
 
