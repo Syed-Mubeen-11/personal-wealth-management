@@ -162,8 +162,21 @@ class PaginatedPositionsResponse(BaseModel):
     data: List[PositionTableResponse]
 
 
+class PortfolioOverviewSummary(BaseModel):
+    """Overview section inside PortfolioResponse"""
+    total_cost_basis: float = 0
+    total_portfolio_value: float = 0
+    overall_gain_loss: float = 0
+    overall_gain_loss_percent: float = 0
+    performance_today: float = 0
+    performance_today_percent: float = 0
+    last_updated: Optional[str] = None
+
+
 class PortfolioResponse(BaseModel):
     """Complete portfolio response (legacy support)"""
+    positions: List[PositionTableResponse] = []
+    overview: PortfolioOverviewSummary = PortfolioOverviewSummary()
 
 
 # ---------------------------------------------------------
