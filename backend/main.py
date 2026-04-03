@@ -2020,3 +2020,200 @@ def download_csv_report(
     )
 
 
+# ---------------------------------------------------------
+# ONE-TIME DATA SEED ENDPOINT
+# ---------------------------------------------------------
+@app.post("/api/seed")
+def seed_demo_data(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Seed the current user's account with realistic demo data.
+    Safe to call multiple times — clears old seed data first.
+    """
+    import random
+    from datetime import timedelta
+
+    uid = current_user.id
+
+    # Clear existing data for this user (idempotent)
+    db.query(models.Recommendation).filter(models.Recommendation.user_id == uid).delete()
+    db.query(models.Simulation).filter(models.Simulation.user_id == uid).delete()
+    db.query(models.Goal).filter(models.Goal.user_id == uid).delete()
+    db.query(models.Transaction).filter(models.Transaction.owner_id == uid).delete()
+    db.query(models.Asset).filter(models.Asset.owner_id == uid).delete()
+    db.commit()
+
+    now = datetime.utcnow()
+    start = now - timedelta(days=540)
+
+    # ── ASSETS ────────────────────────────────────────────
+    assets_data = [
+        ("AAPL", "Apple Inc.", "Stock", 25, 142.50, 189.25),
+        ("MSFT", "Microsoft Corp.", "Stock", 18, 285.00, 378.90),
+        ("GOOGL", "Alphabet Inc.", "Stock", 10, 125.30, 152.40),
+        ("AMZN", "Amazon.com Inc.", "Stock", 12, 178.50, 185.60),
+        ("TSLA", "Tesla Inc.", "Stock", 8, 245.00, 198.30),
+        ("JPM", "JPMorgan Chase", "Stock", 15, 148.20, 196.50),
+        ("NVDA", "NVIDIA Corp.", "Stock", 5, 450.00, 875.30),
+        ("META", "Meta Platforms", "Stock", 7, 320.00, 492.10),
+        ("VOO", "Vanguard S&P 500", "ETF", 20, 380.00, 452.80),
+        ("QQQ", "Invesco QQQ Trust", "ETF", 12, 350.00, 425.60),
+        ("VTI", "Vanguard Total Mkt", "ETF", 30, 210.00, 248.30),
+        ("BND", "Vanguard Total Bond", "Bond", 40, 72.50, 71.80),
+        ("TLT", "iShares 20+ Yr", "Bond", 25, 98.40, 100.60),
+        ("AGG", "iShares Core Bond", "Bond", 35, 100.20, 99.90),
+        ("BTC-USD", "Bitcoin", "Crypto", 0.5, 28500.00, 67200.00),
+        ("ETH-USD", "Ethereum", "Crypto", 3.0, 1750.00, 3420.00),
+        ("CASH", "Cash Reserves", "Cash", 1.0, 15000.00, 15000.00),
+    ]
+    for sym, name, cls, qty, buy, cur in assets_data:
+        db.add(models.Asset(
+            symbol=sym, company_name=name, asset_class=cls,
+            quantity=qty, buy_price=buy,
+            current_value=round(qty * cur, 2), last_price=cur,
+            last_price_at=now - timedelta(minutes=random.randint(5, 120)),
+            owner_id=uid,
+        ))
+
+    # ── TRANSACTIONS ──────────────────────────────────────
+    txns = []
+    txns.append(("Contribution", None, None, 50000.00, start))
+    base_contrib = 2500.0
+    for m in range(1, 19):
+        d = start + timedelta(days=m * 30 + random.randint(-3, 3))
+        v = random.choice([0.8, 0.9, 1.0, 1.0, 1.1, 1.15, 1.3, 0.7])
+        txns.append(("Contribution", None, None, round(base_contrib * v, 2), d))
+
+    stock_buys = [
+        ("AAPL", 25, 142.50, 0), ("MSFT", 18, 285.00, 15),
+        ("GOOGL", 10, 125.30, 45), ("VOO", 20, 380.00, 60),
+        ("NVDA", 5, 450.00, 90), ("BTC-USD", 0.5, 28500.00, 30),
+        ("ETH-USD", 3.0, 1750.00, 75), ("JPM", 15, 148.20, 120),
+        ("TSLA", 8, 245.00, 150), ("META", 7, 320.00, 180),
+        ("QQQ", 12, 350.00, 200), ("VTI", 30, 210.00, 210),
+        ("BND", 40, 72.50, 240), ("TLT", 25, 98.40, 270),
+        ("AGG", 35, 100.20, 300), ("AMZN", 12, 178.50, 330),
+    ]
+    for sym, qty, price, days_off in stock_buys:
+        d = start + timedelta(days=days_off + random.randint(0, 5))
+        txns.append(("Buy", sym, qty, round(qty * price, 2), d))
+
+    sells = [
+        ("AAPL", 5, 175.00, 250), ("TSLA", 3, 210.00, 360),
+        ("NVDA", 2, 720.00, 400), ("VOO", 5, 430.00, 420),
+        ("BTC-USD", 0.1, 55000.00, 450),
+    ]
+    for sym, qty, price, days_off in sells:
+        d = start + timedelta(days=days_off + random.randint(0, 3))
+        txns.append(("Sell", sym, qty, round(qty * price, 2), d))
+
+    for amt, days_off in [(3000, 180), (8500, 320), (1200, 400), (5000, 500)]:
+        d = start + timedelta(days=days_off + random.randint(0, 3))
+        txns.append(("Withdrawal", None, None, float(amt), d))
+
+    for t_type, sym, qty, amount, d in txns:
+        db.add(models.Transaction(
+            date=d, transaction_type=t_type, asset_symbol=sym,
+            quantity=qty, amount=amount, owner_id=uid,
+        ))
+
+    # ── GOALS ─────────────────────────────────────────────
+    goal_objs = []
+    goals_data = [
+        ("Retirement Fund", "retirement", 1000000, 3000, "2050-01-01", "active", 400),
+        ("Dream Home Down Payment", "home", 120000, 2000, "2028-06-01", "active", 350),
+        ("Kids College Fund", "education", 80000, 800, "2035-09-01", "active", 300),
+        ("Japan Travel Fund", "travel", 8000, 500, "2026-12-01", "active", 200),
+        ("Emergency Fund", "custom", 25000, 1500, "2025-12-31", "completed", 500),
+        ("New Car Fund", "custom", 35000, 400, "2029-03-01", "paused", 250),
+    ]
+    for gname, gtype, target, monthly, tdate, gstatus, days_ago in goals_data:
+        g = models.Goal(
+            user_id=uid, goal_name=gname, goal_type=gtype,
+            target_amount=target, monthly_contribution=monthly,
+            target_date=date.fromisoformat(tdate), status=gstatus,
+            created_at=now - timedelta(days=days_ago),
+        )
+        db.add(g)
+        db.flush()
+        goal_objs.append(g)
+
+    # ── SIMULATIONS ───────────────────────────────────────
+    ti, tv, sp = 0, 0, []
+    for yr in range(1, 21):
+        for _ in range(12):
+            ti += 5000; tv += 5000; tv *= (1 + 0.12 / 12)
+        sp.append({"year": yr, "invested_amount": round(ti, 2), "interest_earned": round(tv - ti, 2), "total_value": round(tv, 2)})
+    db.add(models.Simulation(
+        user_id=uid, goal_id=goal_objs[0].id, scenario_name="Aggressive SIP 20yr 12pct",
+        assumptions={"type": "sip", "monthly_investment": 5000, "years": 20, "expected_return_rate": 12},
+        results={"total_invested": round(ti, 2), "estimated_returns": round(tv - ti, 2), "total_value": round(tv, 2), "annual_return_rate": 12, "yearly_projections": sp},
+        created_at=now - timedelta(days=30),
+    ))
+
+    ti2, tv2, sp2 = 0, 0, []
+    for yr in range(1, 16):
+        for _ in range(12):
+            ti2 += 3000; tv2 += 3000; tv2 *= (1 + 0.07 / 12)
+        sp2.append({"year": yr, "invested_amount": round(ti2, 2), "interest_earned": round(tv2 - ti2, 2), "total_value": round(tv2, 2)})
+    db.add(models.Simulation(
+        user_id=uid, goal_id=goal_objs[1].id, scenario_name="Conservative SIP 15yr 7pct",
+        assumptions={"type": "sip", "monthly_investment": 3000, "years": 15, "expected_return_rate": 7},
+        results={"total_invested": round(ti2, 2), "estimated_returns": round(tv2 - ti2, 2), "total_value": round(tv2, 2), "annual_return_rate": 7, "yearly_projections": sp2},
+        created_at=now - timedelta(days=20),
+    ))
+
+    rp, corpus, ri = [], 50000, 50000
+    for yr in range(1, 26):
+        for _ in range(12):
+            corpus += 4000; corpus *= (1 + 0.09 / 12); ri += 4000
+        rp.append({"age": 30 + yr, "year": yr, "invested": round(ri, 2), "corpus": round(corpus, 2), "phase": "accumulation"})
+    db.add(models.Simulation(
+        user_id=uid, goal_id=goal_objs[0].id, scenario_name="Retirement Plan retire at 55",
+        assumptions={"type": "retirement", "current_age": 30, "retirement_age": 55, "current_savings": 50000, "monthly_contribution": 4000, "expected_return_rate": 9, "post_retirement_return_rate": 5, "inflation_rate": 3, "monthly_expense_at_retirement": 5000},
+        results={"corpus_at_retirement": round(corpus, 2), "yearly_projections": rp},
+        created_at=now - timedelta(days=15),
+    ))
+
+    # ── RECOMMENDATIONS ───────────────────────────────────
+    recs_data = [
+        ("Increase Bond Allocation for Stability",
+         "Your portfolio is heavily weighted toward growth stocks (62%). Consider shifting 8-10% into investment-grade bonds to reduce volatility.",
+         {"Stocks": 0.52, "Bonds": 0.22, "ETFs": 0.15, "Crypto": 0.06, "Cash": 0.05}, 1, 25),
+        ("Take Partial Profits on NVDA",
+         "NVIDIA has returned +94% since purchase. Consider selling 20-30% to lock in gains and redeploy into broader market ETFs.",
+         {"Stocks": 0.55, "ETFs": 0.20, "Bonds": 0.15, "Crypto": 0.05, "Cash": 0.05}, 1, 18),
+        ("Boost Monthly Retirement Contributions",
+         "Your $3,000/month puts you on track for ~$890K. Increasing to $3,500/month closes the gap to your $1M target.",
+         {"Stocks": 0.50, "ETFs": 0.20, "Bonds": 0.18, "Crypto": 0.05, "Cash": 0.07}, 0, 7),
+        ("Diversify Crypto Exposure",
+         "Crypto is concentrated in BTC and ETH only. Consider a diversified crypto ETF to reduce single-asset risk.",
+         {"Stocks": 0.50, "ETFs": 0.22, "Bonds": 0.15, "Crypto": 0.08, "Cash": 0.05}, 0, 3),
+        ("Rebalance: Tech Overweight Detected",
+         "Tech accounts for 45% of equity holdings. Trim tech by 5-8% and rotate into healthcare or consumer staples for better diversification.",
+         {"Stocks": 0.48, "ETFs": 0.25, "Bonds": 0.15, "Crypto": 0.05, "Cash": 0.07}, 0, 1),
+    ]
+    for title, text, alloc, is_read, days_ago in recs_data:
+        db.add(models.Recommendation(
+            user_id=uid, title=title, recommendation_text=text,
+            suggested_allocation=alloc, is_read=is_read,
+            created_at=now - timedelta(days=days_ago),
+        ))
+
+    db.commit()
+
+    return {
+        "status": "seeded",
+        "user_id": uid,
+        "counts": {
+            "assets": db.query(models.Asset).filter(models.Asset.owner_id == uid).count(),
+            "transactions": db.query(models.Transaction).filter(models.Transaction.owner_id == uid).count(),
+            "goals": db.query(models.Goal).filter(models.Goal.user_id == uid).count(),
+            "simulations": db.query(models.Simulation).filter(models.Simulation.user_id == uid).count(),
+            "recommendations": db.query(models.Recommendation).filter(models.Recommendation.user_id == uid).count(),
+        },
+    }
+
+
