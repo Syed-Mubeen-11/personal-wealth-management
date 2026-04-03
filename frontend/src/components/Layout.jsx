@@ -31,7 +31,7 @@ export default function Layout({ children }) {
     const isActive = (path) => location.pathname === path;
 
     const navLinks = [
-        { to: '/', icon: Home, label: 'Dashboard' },
+        { to: '/dashboard', icon: Home, label: 'Dashboard' },
         { to: '/portfolio', icon: TrendingUp, label: 'Investments' },
         { to: '/simulator', icon: Activity, label: 'Simulator' },
         { to: '/ai-advice', icon: Bot, label: 'AI Advice' },

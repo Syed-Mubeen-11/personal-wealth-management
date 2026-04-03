@@ -36,9 +36,10 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Private Routes (Wrapped inside the new Global Sidebar Layout) */}
+        {/* Root redirects to login (login page will redirect to dashboard if already authenticated) */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <PrivateRoute>
               <Layout>
@@ -47,7 +48,6 @@ export default function App() {
             </PrivateRoute>
           }
         />
-        <Route path="/dashboard" element={<Navigate to="/" replace />} />
 
         <Route
           path="/profile"

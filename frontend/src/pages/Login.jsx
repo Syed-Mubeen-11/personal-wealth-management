@@ -24,7 +24,7 @@ export default function Login() {
       if (token) {
         // Keeps your exact local storage key name
         localStorage.setItem("jwt", token);
-        navigate("/"); // Smooth React Router transition
+        navigate("/dashboard"); // Smooth React Router transition
       }
     } catch (err) {
       const status = err?.response?.status;
