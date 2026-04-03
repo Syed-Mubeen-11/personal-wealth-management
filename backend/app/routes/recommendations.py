@@ -4,44 +4,28 @@ from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.models.user import User
 from app.models.investments import Investment, AssetTypeEnum
+from app.models.goals import Goal
+from app.services.recommendation_engine import (
+    full_analysis,
+    portfolio_wealth_score,
+    goal_insights,
+    smart_actions,
+    TARGET_WEIGHTS,
+)
 from datetime import datetime
 
 router = APIRouter()
 
 
-# ─── Helper: Target allocation per risk profile ──────────────────────────────
-TARGET_WEIGHTS = {
-    "aggressive": {
-        "stock":       0.60,
-        "etf":         0.20,
-        "mutual_fund": 0.10,
-        "bond":        0.05,
-        "cash":        0.05,
-    },
-    "moderate": {
-        "stock":       0.40,
-        "etf":         0.20,
-        "mutual_fund": 0.15,
-        "bond":        0.20,
-        "cash":        0.05,
-    },
-    "conservative": {
-        "stock":       0.20,
-        "etf":         0.15,
-        "mutual_fund": 0.20,
-        "bond":        0.40,
-        "cash":        0.05,
-    },
-}
+# ─── Recommendation text templates (legacy simple endpoint) ──────────────────
 
-# ─── Helper: Recommendation text per risk profile ────────────────────────────
 RECOMMENDATION_TEMPLATES = {
     "aggressive": [
         {
-            "title": "Maximize Equity Growth",
+            "title": "Maximise Equity Growth",
             "recommendation_text": (
-                "Your aggressive risk profile supports a high equity allocation. "
-                "Focus on growth stocks and diversified ETFs for long-term capital appreciation."
+                "Your aggressive wealth profile supports a high equity allocation. "
+                "Focus on growth stocks and diversified ETFs for long-term wealth appreciation."
             ),
             "suggested_allocation": TARGET_WEIGHTS["aggressive"],
         },
@@ -49,7 +33,7 @@ RECOMMENDATION_TEMPLATES = {
             "title": "Diversify with ETFs",
             "recommendation_text": (
                 "Reduce concentration risk by shifting some individual stock exposure "
-                "into broad-market ETFs while maintaining your aggressive stance."
+                "into broad-market ETFs while maintaining your aggressive wealth strategy."
             ),
             "suggested_allocation": {
                 "stock": 0.50, "etf": 0.30,
@@ -59,10 +43,10 @@ RECOMMENDATION_TEMPLATES = {
     ],
     "moderate": [
         {
-            "title": "Balanced Growth Strategy",
+            "title": "Balanced Wealth Growth Strategy",
             "recommendation_text": (
-                "A balanced mix of equities and bonds suits your moderate risk profile. "
-                "Consider index funds and dividend stocks for steady growth with lower volatility."
+                "A balanced mix of equities and bonds suits your moderate wealth profile. "
+                "Consider index funds and dividend stocks for steady wealth growth with lower volatility."
             ),
             "suggested_allocation": TARGET_WEIGHTS["moderate"],
         },
@@ -70,7 +54,7 @@ RECOMMENDATION_TEMPLATES = {
             "title": "Add Bond Stability",
             "recommendation_text": (
                 "Increasing your bond allocation can cushion against market downturns "
-                "while still allowing meaningful equity participation."
+                "while still allowing meaningful equity participation in wealth building."
             ),
             "suggested_allocation": {
                 "stock": 0.35, "etf": 0.20,
@@ -80,18 +64,18 @@ RECOMMENDATION_TEMPLATES = {
     ],
     "conservative": [
         {
-            "title": "Capital Preservation Focus",
+            "title": "Wealth Preservation Focus",
             "recommendation_text": (
-                "Your conservative profile prioritizes capital safety. "
-                "A bond-heavy portfolio with some mutual funds provides stable returns with minimal risk."
+                "Your conservative profile prioritises capital safety. "
+                "A bond-heavy portfolio with some mutual funds provides stable wealth returns with minimal risk."
             ),
             "suggested_allocation": TARGET_WEIGHTS["conservative"],
         },
         {
-            "title": "Low-Risk Diversification",
+            "title": "Low-Risk Wealth Diversification",
             "recommendation_text": (
                 "Consider diversifying into liquid mutual funds and government bonds "
-                "to earn steady returns while keeping your principal safe."
+                "to earn steady returns while keeping your wealth principal safe."
             ),
             "suggested_allocation": {
                 "stock": 0.15, "etf": 0.10,
@@ -102,16 +86,21 @@ RECOMMENDATION_TEMPLATES = {
 }
 
 
-# ─── GET /recommendations ────────────────────────────────────────────────────
+# ─── GET /recommendations ─────────────────────────────────────────────────────
 @router.get("/")
 def get_recommendations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Returns personalized recommendations based on the user's risk profile.
+    Legacy endpoint: returns 2 static personalized recommendations
+    based on the user's risk profile.
     """
-    risk_profile = current_user.risk_profile or "moderate"
+    risk_profile = (
+        current_user.risk_profile.value
+        if hasattr(current_user.risk_profile, "value")
+        else str(current_user.risk_profile or "moderate")
+    )
 
     templates = RECOMMENDATION_TEMPLATES.get(risk_profile, RECOMMENDATION_TEMPLATES["moderate"])
 
@@ -129,7 +118,7 @@ def get_recommendations(
     return recommendations
 
 
-# ─── PATCH /recommendations/{id}/read ───────────────────────────────────────
+# ─── PATCH /recommendations/{id}/read ────────────────────────────────────────
 @router.patch("/{recommendation_id}/read")
 def mark_recommendation_read(
     recommendation_id: int,
@@ -137,8 +126,8 @@ def mark_recommendation_read(
 ):
     """
     Marks a recommendation as read.
-    Since recommendations are generated dynamically (not stored in DB yet),
-    this endpoint acknowledges the action successfully.
+    Since recommendations are generated dynamically, this endpoint
+    acknowledges the action successfully.
     """
     return {
         "message": f"Recommendation {recommendation_id} marked as read",
@@ -147,7 +136,51 @@ def mark_recommendation_read(
     }
 
 
-# ─── GET /recommendations/rebalance ─────────────────────────────────────────
+# ─── GET /recommendations/analyze ────────────────────────────────────────────
+@router.get("/analyze")
+def get_full_analysis(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Full wealth management recommendation engine.
+    Returns portfolio wealth score, smart actions, goal insights,
+    and allocation drift analysis.
+    """
+    investments = db.query(Investment).filter(
+        Investment.user_id == current_user.id
+    ).all()
+
+    goals = db.query(Goal).filter(
+        Goal.user_id == current_user.id
+    ).all()
+
+    return full_analysis(current_user, investments, goals)
+
+
+# ─── GET /recommendations/wealth-score ───────────────────────────────────────
+@router.get("/wealth-score")
+def get_wealth_score(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns just the composite portfolio wealth score breakdown.
+    """
+    investments = db.query(Investment).filter(
+        Investment.user_id == current_user.id
+    ).all()
+
+    risk_profile = (
+        current_user.risk_profile.value
+        if hasattr(current_user.risk_profile, "value")
+        else str(current_user.risk_profile or "moderate")
+    )
+
+    return portfolio_wealth_score(investments, risk_profile)
+
+
+# ─── GET /recommendations/rebalance ──────────────────────────────────────────
 @router.get("/rebalance")
 def get_rebalance_data(
     db: Session = Depends(get_db),
@@ -192,7 +225,11 @@ def get_rebalance_data(
     }
 
     # ── Get target weights from risk profile ──────────────────────────────
-    risk_profile = current_user.risk_profile or "moderate"
+    risk_profile = (
+        current_user.risk_profile.value
+        if hasattr(current_user.risk_profile, "value")
+        else str(current_user.risk_profile or "moderate")
+    )
     target_weights = TARGET_WEIGHTS.get(risk_profile, TARGET_WEIGHTS["moderate"])
 
     # ── Calculate drift and suggestions ───────────────────────────────────
@@ -210,7 +247,7 @@ def get_rebalance_data(
                 "asset": asset,
                 "action": "Sell",
                 "amount": excess_value,
-                "reason": f"Overweight by {round(drift * 100, 1)}% — reduce {asset} exposure",
+                "reason": f"Overweight by {round(drift * 100, 1)}% — reduce {asset} exposure to optimise wealth allocation",
             })
         elif drift < -DRIFT_THRESHOLD:
             # Underweight — suggest buying
@@ -219,7 +256,7 @@ def get_rebalance_data(
                 "asset": asset,
                 "action": "Buy",
                 "amount": deficit_value,
-                "reason": f"Underweight by {round(abs(drift) * 100, 1)}% — increase {asset} exposure",
+                "reason": f"Underweight by {round(abs(drift) * 100, 1)}% — increase {asset} exposure for optimal wealth growth",
             })
 
     # Sort suggestions: largest drift first

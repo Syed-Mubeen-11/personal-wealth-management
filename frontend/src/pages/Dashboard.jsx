@@ -3,10 +3,10 @@ import SummaryCard from "../components/SummaryCard";
 import ChartCard from "../components/ChartCard";
 import TransactionsTable from "../components/TransactionsTable";
 import GoalsProgress from "../components/GoalsProgress";
+import WealthScoreWidget from "../components/WealthScoreWidget";
 import API from "../services/api";
 
 const Dashboard = () => {
-
   const [user, setUser] = useState(null);
   const [investments, setInvestments] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -108,6 +108,7 @@ const Dashboard = () => {
         />
 
       </div>
+      
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
@@ -123,13 +124,20 @@ const Dashboard = () => {
           investments={investments}
         />
 
+        
+
       </div>
+       <div className="grid grid-cols-1 xl:grid-cols-1 ">
+        <TransactionsTable transactions={transactions} showActions={false} />
+        </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
-        <TransactionsTable transactions={transactions} showActions={false} />
+        
 
         <GoalsProgress />
+
+        <WealthScoreWidget />
 
       </div>
 

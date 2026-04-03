@@ -54,9 +54,17 @@ const AllocationChart = ({ allocation }) => {
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white p-2 shadow rounded border">
-                    <p className="font-semibold">{payload[0].name}</p>
-                    <p className="text-gray-600">{payload[0].value.toFixed(1)}%</p>
+                <div style={{
+                    background: 'white', border: '1px solid #e5e7eb',
+                    borderRadius: '8px', padding: '8px 12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                }}>
+                    <p style={{ margin: '0 0 2px', fontWeight: '700', color: '#111827', fontSize: '13px' }}>
+                        {payload[0].name}
+                    </p>
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>
+                        {payload[0].value.toFixed(1)}%
+                    </p>
                 </div>
             );
         }

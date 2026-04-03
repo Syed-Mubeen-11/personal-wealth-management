@@ -218,7 +218,7 @@ function Goals() {
       {/* CONTRIBUTION CHART */}
       {selectedGoal && (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow mb-8">
-          <h2 className="text-lg font-semibold mb-4">
+          <h2 className="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400">
             Contribution Breakdown
           </h2>
           <ContributionChart goal={selectedGoal} />

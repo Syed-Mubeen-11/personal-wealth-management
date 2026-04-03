@@ -1,7 +1,18 @@
 import React, { useContext } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { ThemeContext } from "../context/Themecontext";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { 
+  XMarkIcon,
+  HomeIcon,
+  BriefcaseIcon,
+  ArrowPathIcon,
+  ChartBarIcon,
+  LightBulbIcon,
+  CalculatorIcon,
+  DocumentChartBarIcon,
+  UserCircleIcon,
+  ArrowRightOnRectangleIcon
+} from "@heroicons/react/24/outline";
 
 const Sidebar = ({ setIsAuthenticated, sidebarOpen, setSidebarOpen }) => {
   const navigate = useNavigate();
@@ -14,14 +25,14 @@ const Sidebar = ({ setIsAuthenticated, sidebarOpen, setSidebarOpen }) => {
   };
 
   const menuItems = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Portfolio", path: "/portfolio" },
-    { name: "Transactions", path: "/transactions" },
-    { name: "Goals", path: "/goals" },
-    { name: "Recommendations", path: "/recommendations" },  // ✅ Add this line
-    { name: "SIP Calculator", path: "/sip-calculator" },
-    { name: "Reports", path: "/reports" },
-    { name: "Profile", path: "/profile" },
+    { name: "Dashboard", path: "/dashboard", icon: HomeIcon },
+    { name: "Portfolio", path: "/portfolio", icon: BriefcaseIcon },
+    { name: "Transactions", path: "/transactions", icon: ArrowPathIcon },
+    { name: "Goals", path: "/goals", icon: ChartBarIcon },
+    { name: "Recommendations", path: "/recommendations", icon: LightBulbIcon },
+    { name: "SIP Calculator", path: "/sip-calculator", icon: CalculatorIcon },
+    { name: "Reports", path: "/reports", icon: DocumentChartBarIcon },
+    { name: "Profile", path: "/profile", icon: UserCircleIcon },
   ];
 
   return (
@@ -38,16 +49,14 @@ const Sidebar = ({ setIsAuthenticated, sidebarOpen, setSidebarOpen }) => {
         className={`fixed top-0 left-0 z-40 h-full w-64 transform transition-transform duration-300
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:h-screen
-        ${darkMode ? "bg-gray-800" : "bg-white"} shadow-lg flex flex-col justify-between`}
+        ${darkMode ? "bg-gray-900" : "bg-white"} shadow-lg flex flex-col justify-between`}
       >
         <div>
           {/* Mobile Close Button */}
-          <div className="flex items-center justify-between p-6 md:hidden">
+          <div className="flex items-center justify-between p-5 md:hidden">
             <div className={`text-xl font-bold text-indigo-600`}>WealthApp</div>
             <button onClick={() => setSidebarOpen(false)}>
-              <XMarkIcon
-                className="h-6 w-6 text-gray-200 dark:text-gray-200"
-              />
+              <XMarkIcon className="h-6 w-6 text-gray-500" />
             </button>
           </div>
 
@@ -56,23 +65,24 @@ const Sidebar = ({ setIsAuthenticated, sidebarOpen, setSidebarOpen }) => {
             WealthApp
           </div>
 
-          <nav className="px-4 space-y-2 mt-4">
+          <nav className="px-3 space-y-2 mt-4">
             {menuItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `block p-3 rounded transition-colors duration-200 ${
+                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 ${
                     isActive
-                      ? "bg-indigo-100 dark:bg-indigo-700 text-indigo-700 dark:text-white"
+                      ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
                       : darkMode
-                      ? "text-gray-200 hover:bg-indigo-700"
-                      : "text-gray-800 hover:bg-indigo-100"
+                      ? "text-gray-300 hover:bg-gray-800 hover:text-white"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                   }`
                 }
                 onClick={() => setSidebarOpen(false)}
               >
-                {item.name}
+                <item.icon className="h-5 w-5" />
+                <span className="text-sm">{item.name}</span>
               </NavLink>
             ))}
           </nav>
@@ -81,9 +91,10 @@ const Sidebar = ({ setIsAuthenticated, sidebarOpen, setSidebarOpen }) => {
         <div className="p-4">
           <button
             onClick={handleLogout}
-            className="w-full bg-red-500 text-white p-3 rounded hover:bg-red-600 transition"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           >
-            Logout
+            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+            <span className="text-sm">Logout</span>
           </button>
         </div>
       </aside>

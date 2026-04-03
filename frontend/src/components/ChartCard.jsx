@@ -179,7 +179,7 @@ const ChartCard = ({ title, type, investments = [] }) => {
       <div className={`rounded-2xl shadow-sm border p-6 ${
         darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"
       }`}>
-        <h3 className="text-lg font-semibold mb-6">{title}</h3>
+        <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">{title}</h3>
         <div className="h-64 flex items-center justify-center">
           <div className="animate-pulse text-gray-400">Loading chart data...</div>
         </div>
@@ -191,7 +191,7 @@ const ChartCard = ({ title, type, investments = [] }) => {
     <div className={`rounded-2xl shadow-sm border p-6 ${
       darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100"
     }`}>
-      <h3 className="text-lg font-semibold mb-6">{title}</h3>
+      <h3 className={`text-lg font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-900"}`}>{title}</h3>
       <div className="h-64">
         {type === "line" ? 
           <Line data={getLineData()} options={options} /> : 

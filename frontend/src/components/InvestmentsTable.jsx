@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useContext } from "react";
+import { ThemeContext } from "../context/Themecontext";
 import API from "../services/api";
 
 // ────────────────────────────────────────────────────────────────────────────
 
 function InvestmentsTable({ investments, onEdit, onDelete, fetchInvestments }) {
+  const { darkMode } = useContext(ThemeContext);
 
   const [rebalanceData, setRebalanceData] = useState(null);
 
@@ -43,9 +46,9 @@ function InvestmentsTable({ investments, onEdit, onDelete, fetchInvestments }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow p-6">
+    <div className={`rounded-xl shadow p-6 ${darkMode ? "bg-gray-800" : "bg-white"}`}>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Investments</h2>
+        <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>Investments</h2>
         <button
           onClick={refreshPrice}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm transition shadow-sm"
@@ -57,17 +60,17 @@ function InvestmentsTable({ investments, onEdit, onDelete, fetchInvestments }) {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b">
-              <th>Symbol</th>
-              <th>Asset Type</th>
-              <th>Units</th>
-              <th>Buy Price</th>
-              <th>Cost Basis</th>
-              <th>Live Price</th>
-              <th>Value</th>
-              <th>P/L</th>
-              <th>Drift</th>
-              <th>Actions</th>
+            <tr className={`border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Symbol</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Asset Type</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Units</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Buy Price</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Cost Basis</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Live Price</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Value</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>P/L</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Drift</th>
+              <th className={`text-left py-2 px-2 text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Actions</th>
             </tr>
           </thead>
 
@@ -81,20 +84,20 @@ function InvestmentsTable({ investments, onEdit, onDelete, fetchInvestments }) {
               const { icon, color, tooltip } = getDriftIcon(drift);
 
               return (
-                <tr key={inv.id} className="border-b hover:bg-gray-50">
-                  <td className="py-2 font-medium">{inv.symbol}</td>
-                  <td className="py-2 capitalize">{inv.asset_type?.replace(/_/g, ' ')}</td>
-                  <td className="py-2">{inv.units}</td>
-                  <td className="py-2">
+                <tr key={inv.id} className={`border-b ${darkMode ? "border-gray-700 hover:bg-gray-700" : "border-gray-100 hover:bg-gray-50"}`}>
+                  <td className={`py-2 px-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>{inv.symbol}</td>
+                  <td className={`py-2 px-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>{inv.asset_type?.replace(/_/g, ' ')}</td>
+                  <td className={`py-2 px-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>{inv.units}</td>
+                  <td className={`py-2 px-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>
                     {inv.avg_buy_price > 0 ? (
                       `₹${inv.avg_buy_price}`
                     ) : (
                       <span className="text-red-500 font-semibold">Missing</span>
                     )}
                   </td>
-                  <td className="py-2">₹{costBasis.toFixed(2)}</td>
-                  <td className="py-2">₹{livePrice.toFixed(2)}</td>
-                  <td className="py-2">₹{value.toFixed(2)}</td>
+                  <td className={`py-2 px-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>₹{costBasis.toFixed(2)}</td>
+                  <td className={`py-2 px-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>₹{livePrice.toFixed(2)}</td>
+                  <td className={`py-2 px-2 ${darkMode ? "text-gray-200" : "text-gray-800"}`}>₹{value.toFixed(2)}</td>
                   <td className={`py-2 ${profitLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
                     ₹{profitLoss.toFixed(2)}
                   </td>

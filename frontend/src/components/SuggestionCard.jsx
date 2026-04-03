@@ -1,33 +1,73 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { ThemeContext } from '../context/Themecontext';
 
+/**
+ * SuggestionCard
+ * ──────────────────────────────────────────────────────────────────────────
+ * Displays a single rebalance suggestion from the backend.
+ *
+ * Backend shape (from /recommendations/rebalance):
+ *   { asset: string, action: "Buy"|"Sell", amount: number, reason: string }
+ */
 const SuggestionCard = ({ suggestion }) => {
-    const isBuy = suggestion.action === 'BUY';
+    const { darkMode: dark } = useContext(ThemeContext);
+    const isBuy = suggestion.action === 'Buy';
+
+    // ── Theme tokens ──────────────────────────────────────────────────────────
+    const cardBg     = dark ? 'rgba(255,255,255,0.04)' : '#f9fafb';
+    const cardBorder = dark ? 'rgba(255,255,255,0.08)' : '#e5e7eb';
+    const assetColor = dark ? 'white'   : '#111827';
+    const reasonColor= dark ? 'rgba(255,255,255,0.6)' : '#6b7280';
+    const amtColor   = dark ? 'white'   : '#111827';
+
+    const buyStyle  = { background: '#dcfce7', color: '#15803d' };
+    const sellStyle = { background: '#fee2e2', color: '#dc2626' };
+    const actionStyle = isBuy ? buyStyle : sellStyle;
+
+    const fmt = (n) =>
+        new Intl.NumberFormat('en-IN', {
+            style: 'currency', currency: 'INR', maximumFractionDigits: 0
+        }).format(n);
 
     return (
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                        isBuy ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                        {suggestion.action}
+        <div style={{
+            background: cardBg,
+            border: `1px solid ${cardBorder}`,
+            borderLeft: `3px solid ${isBuy ? '#10b981' : '#ef4444'}`,
+            borderRadius: '10px',
+            padding: '14px 16px',
+            transition: 'background 0.15s',
+        }}>
+            {/* Top row: action badge + asset name + amount */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                        ...actionStyle,
+                        padding: '3px 10px', borderRadius: '20px',
+                        fontSize: '11px', fontWeight: '700', textTransform: 'uppercase',
+                        letterSpacing: '0.4px', flexShrink: 0,
+                    }}>
+                        {isBuy ? '↑ Buy' : '↓ Sell'}
                     </span>
-                    <span className="font-semibold text-gray-900">{suggestion.symbol}</span>
+                    <span style={{
+                        fontWeight: '700', fontSize: '14px', color: assetColor,
+                        textTransform: 'capitalize',
+                    }}>
+                        {String(suggestion.asset).replace(/_/g, ' ')}
+                    </span>
                 </div>
-                <div className="text-right">
-                    <p className="text-sm text-gray-600">
-                        {suggestion.qty_change?.toFixed(2)} units
-                    </p>
-                    <p className="text-sm font-medium text-gray-900">
-                        ₹{suggestion.estimated_value?.toLocaleString()}
-                    </p>
-                </div>
-            </div>
-            <div className="mt-2 flex items-center">
-                <span className={`text-sm ${suggestion.drift_impact > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {suggestion.drift_impact > 0 ? '↑' : '↓'} Drift impact: {Math.abs(suggestion.drift_impact || 0).toFixed(1)}%
+                <span style={{ fontSize: '15px', fontWeight: '800', color: isBuy ? '#10b981' : '#ef4444' }}>
+                    {fmt(suggestion.amount)}
                 </span>
             </div>
+
+            {/* Reason */}
+            <p style={{
+                fontSize: '12px', color: reasonColor, margin: '8px 0 0',
+                lineHeight: '1.5',
+            }}>
+                {suggestion.reason}
+            </p>
         </div>
     );
 };

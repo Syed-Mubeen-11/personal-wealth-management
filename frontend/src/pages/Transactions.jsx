@@ -117,22 +117,22 @@ function Transactions() {
 
     <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900">
 
-      <h1 className="text-3xl font-bold mb-6">
+      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
         Transactions
       </h1>
 
       <form
         onSubmit={editId ? updateTransaction : createTransaction}
-        className="bg-white p-6 rounded-xl shadow mb-8"
+       className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow mb-8"
       >
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 ">
 
           <select
             name="investment_id"
             value={formData.investment_id}
             onChange={handleChange}
-            className="border p-2 rounded"
+            className="border border-gray-300 dark:border-gray-600 p-2 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             required
 >
           <option value="">Select Investment</option>
@@ -159,7 +159,7 @@ function Transactions() {
             name="type"
             value={formData.type}
             onChange={handleChange}
-            className="border p-2 rounded"
+            className="border border-gray-300 dark:border-gray-600 p-2 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             <option value="">Select Type</option>
             <option value="buy">Buy</option>
@@ -173,7 +173,7 @@ function Transactions() {
             placeholder="Quantity"
             value={formData.quantity}
             onChange={handleChange}
-            className="border p-2 rounded"
+            className="border border-gray-300 dark:border-gray-600 p-2 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
 
           <input
@@ -182,7 +182,7 @@ function Transactions() {
             placeholder="Price"
             value={formData.price}
             onChange={handleChange}
-            className="border p-2 rounded"
+            className="border border-gray-300 dark:border-gray-600 p-2 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
 
         </div>
