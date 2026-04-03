@@ -12,6 +12,7 @@ function Profile() {
         kyc_status: 'unverified'
     });
     const [loading, setLoading] = useState(false);
+    const [kycLoading, setKycLoading] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(true);
 
     // Fetch existing profile data on load
@@ -36,6 +37,19 @@ function Profile() {
 
     const handleRiskSelect = (level) => {
         setUser({ ...user, risk_profile: level });
+    };
+
+    const handleVerifyKyc = async () => {
+        setKycLoading(true);
+        try {
+            const res = await api.patch('/profile/verify-kyc');
+            setUser(prev => ({ ...prev, kyc_status: res.data.kyc_status }));
+        } catch (err) {
+            console.error("KYC verification failed", err);
+            alert("Failed to verify KYC. Please try again.");
+        } finally {
+            setKycLoading(false);
+        }
     };
 
     const handleSave = async () => {
@@ -181,16 +195,30 @@ function Profile() {
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-800">KYC Status</h2>
                             <span className={`px-2 py-1 rounded text-xs font-bold uppercase
-                                ${user.kyc_status === 'verified' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                {user.kyc_status}
+                                ${user.kyc_status === 'verified' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {user.kyc_status === 'verified' ? 'Verified' : 'Unverified'}
                             </span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Your Know Your Customer (KYC) verification is {user.kyc_status}.
-                        </p>
-                        <button className="w-full border border-gray-300 py-2 rounded text-sm font-bold text-gray-700 hover:bg-gray-50">
-                            Update KYC
-                        </button>
+
+                        {user.kyc_status === 'verified' ? (
+                            <div className="flex items-center gap-2 text-green-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <p className="text-sm font-medium">Your KYC verification is complete.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-sm text-gray-600 mb-4">I want to be verified</p>
+                                <button
+                                    onClick={handleVerifyKyc}
+                                    disabled={kycLoading}
+                                    className="w-full bg-blue-700 text-white py-2 rounded text-sm font-bold hover:bg-blue-800 transition"
+                                >
+                                    {kycLoading ? 'Verifying…' : 'Verify'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

@@ -206,6 +206,15 @@ def update_profile(profile_update: UserProfileUpdate, db: Session = Depends(get_
         _invalidate_rebalance_cache(current_user.id)
     return current_user
 
+@app.patch("/profile/verify-kyc", response_model=UserProfileResponse)
+def verify_kyc(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """One-click KYC verification — sets kyc_status to verified."""
+    current_user.kyc_status = models.KYCEnum.verified
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
 # --- PROFILE & RISK MANAGEMENT ROUTES ---
 @app.get("/api/profile-risk")
 def get_profile_risk(current_user: models.User = Depends(get_current_user)):
