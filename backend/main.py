@@ -2079,12 +2079,12 @@ def seed_demo_data(
 
     # ── TRANSACTIONS ──────────────────────────────────────
     txns = []
-    txns.append(("Contribution", None, None, 50000.00, start))
+    txns.append(("Contribution", "CASH", 1, 50000.00, start + timedelta(hours=9, minutes=15)))
     base_contrib = 2500.0
     for m in range(1, 19):
-        d = start + timedelta(days=m * 30 + random.randint(-3, 3))
+        d = start + timedelta(days=m * 30 + random.randint(-3, 3), hours=random.randint(8, 17), minutes=random.randint(0, 59))
         v = random.choice([0.8, 0.9, 1.0, 1.0, 1.1, 1.15, 1.3, 0.7])
-        txns.append(("Contribution", None, None, round(base_contrib * v, 2), d))
+        txns.append(("Contribution", "CASH", 1, round(base_contrib * v, 2), d))
 
     stock_buys = [
         ("AAPL", 25, 142.50, 0), ("MSFT", 18, 285.00, 15),
@@ -2097,7 +2097,7 @@ def seed_demo_data(
         ("AGG", 35, 100.20, 300), ("AMZN", 12, 178.50, 330),
     ]
     for sym, qty, price, days_off in stock_buys:
-        d = start + timedelta(days=days_off + random.randint(0, 5))
+        d = start + timedelta(days=days_off + random.randint(0, 5), hours=random.randint(9, 16), minutes=random.randint(0, 59))
         txns.append(("Buy", sym, qty, round(qty * price, 2), d))
 
     sells = [
@@ -2106,12 +2106,12 @@ def seed_demo_data(
         ("BTC-USD", 0.1, 55000.00, 450),
     ]
     for sym, qty, price, days_off in sells:
-        d = start + timedelta(days=days_off + random.randint(0, 3))
+        d = start + timedelta(days=days_off + random.randint(0, 3), hours=random.randint(9, 16), minutes=random.randint(0, 59))
         txns.append(("Sell", sym, qty, round(qty * price, 2), d))
 
     for amt, days_off in [(3000, 180), (8500, 320), (1200, 400), (5000, 500)]:
-        d = start + timedelta(days=days_off + random.randint(0, 3))
-        txns.append(("Withdrawal", None, None, float(amt), d))
+        d = start + timedelta(days=days_off + random.randint(0, 3), hours=random.randint(9, 16), minutes=random.randint(0, 59))
+        txns.append(("Withdrawal", "CASH", 1, float(amt), d))
 
     for t_type, sym, qty, amount, d in txns:
         db.add(models.Transaction(
