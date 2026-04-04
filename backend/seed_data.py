@@ -86,8 +86,7 @@ assets_data = [
     # Crypto
     ("BTC",   "Bitcoin",             "Crypto",  0.5, 28500.00, 67200.00),  # big winner
     ("ETH",   "Ethereum",            "Crypto",  3.0,  1750.00,  3420.00),
-    # Cash
-    ("CASH",  "Cash Reserves",       "Cash",  1.0, 15000.00, 15000.00),
+    # (Removed Cash asset)
 ]
 
 print(f"[+] Seeding {len(assets_data)} assets...")
