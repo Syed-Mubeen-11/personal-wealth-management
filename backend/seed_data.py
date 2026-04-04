@@ -115,17 +115,7 @@ start_date = today - timedelta(days=540)  # ~18 months ago
 
 transactions = []
 
-# Initial large contribution
-transactions.append(("Contribution", "CASH", 1, 50000.00, start_date + timedelta(hours=9, minutes=15)))
-
-# Monthly contributions with slight variance (not perfectly linear)
-base_contribution = 2500.0
-for month_offset in range(1, 19):
-    d = start_date + timedelta(days=month_offset * 30 + random.randint(-3, 3), hours=random.randint(8, 17), minutes=random.randint(0, 59))
-    # Vary the contribution: sometimes more, sometimes less
-    variance = random.choice([0.8, 0.9, 1.0, 1.0, 1.1, 1.15, 1.3, 0.7])
-    amt = round(base_contribution * variance, 2)
-    transactions.append(("Contribution", "CASH", 1, amt, d))
+## Removed all Contribution transactions
 
 # Stock purchases spread over time with non-uniform timing
 stock_buys = [
@@ -154,28 +144,24 @@ for sym, qty, price, days_after in sells:
     d = start_date + timedelta(days=days_after + random.randint(0, 3), hours=random.randint(9, 16), minutes=random.randint(0, 59))
     transactions.append(("Sell", sym, qty, round(qty * price, 2), d))
 
-# A few withdrawals (irregular, spiky)
-withdrawals = [
-    (3000.00, 180),   # mid-year expense
-    (8500.00, 320),   # big withdrawal
-    (1200.00, 400),   # small withdrawal
-    (5000.00, 500),   # recent withdrawal
-]
-for amt, days_after in withdrawals:
-    d = start_date + timedelta(days=days_after + random.randint(0, 3), hours=random.randint(9, 16), minutes=random.randint(0, 59))
-    transactions.append(("Withdrawal", "CASH", 1, amt, d))
+## Removed all Withdrawal transactions
 
-print(f"    {len(transactions)} transactions generated")
+print(f"    {len(transactions)} transactions generated (excluding Contribution/Withdrawal)")
 for txn_type, sym, qty, amount, d in transactions:
-    t = models.Transaction(
-        date=d,
-        transaction_type=txn_type,
-        asset_symbol=sym,
-        quantity=qty,
-        amount=amount,
-        owner_id=USER_ID,
-    )
-    db.add(t)
+    # Only add non-cash transactions
+    if txn_type not in ("Contribution", "Withdrawal"):
+        asset_symbol = sym
+        quantity = qty
+        tx_date = min(d, today)
+        t = models.Transaction(
+            date=tx_date,
+            transaction_type=txn_type,
+            asset_symbol=asset_symbol,
+            quantity=quantity,
+            amount=amount,
+            owner_id=USER_ID,
+        )
+        db.add(t)
 db.commit()
 
 # ── 4. GOALS — multiple types at various completion stages ───────────────────
