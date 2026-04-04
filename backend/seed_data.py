@@ -61,6 +61,9 @@ db.query(models.Simulation).filter(models.Simulation.user_id == USER_ID).delete(
 db.query(models.Goal).filter(models.Goal.user_id == USER_ID).delete()
 db.query(models.Transaction).filter(models.Transaction.owner_id == USER_ID).delete()
 db.query(models.Asset).filter(models.Asset.owner_id == USER_ID).delete()
+# Extra: Remove any lingering 'CASH' assets or transactions for this user
+db.query(models.Transaction).filter(models.Transaction.owner_id == USER_ID, models.Transaction.asset_symbol == "CASH").delete()
+db.query(models.Asset).filter(models.Asset.owner_id == USER_ID, models.Asset.symbol == "CASH").delete()
 db.commit()
 
 # ── 2. ASSETS — diverse across asset classes ─────────────────────────────────
