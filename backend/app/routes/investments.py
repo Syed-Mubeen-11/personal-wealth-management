@@ -32,6 +32,12 @@ def create_investment(
         raise HTTPException(status_code=400, detail="Buy price must be greater than zero")
 
     price = get_asset_price(data.symbol, data.asset_type)
+    
+    # If price is None, fallback to buy price
+    if price is None or price == 0:
+        price = float(data.avg_buy_price)
+        print(f"⚠️ Using fallback price: {price} for {data.symbol}")
+    
     cost_basis = float(data.units) * float(data.avg_buy_price)
 
     investment = Investment(
