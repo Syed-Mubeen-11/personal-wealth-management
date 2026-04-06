@@ -15,16 +15,73 @@ function Portfolio() {
   const [submitting, setSubmitting]                       = useState(false);
   const [lastUpdated, setLastUpdated]                     = useState(null);
   const [isRebalanceDrawerOpen, setIsRebalanceDrawerOpen] = useState(false);
+  const [currentPrice, setCurrentPrice]                   = useState(null);
+  const [calculationMode, setCalculationMode]             = useState("units"); // "units" or "amount"
+  
   const [formData, setFormData] = useState({
-    symbol: "", asset_type: "", units: "", avg_buy_price: ""
+    symbol: "", asset_type: "", units: "", avg_buy_price: "", amount: ""
   });
   const [editId, setEditId] = useState(null);
-  const [toast, setToast]   = useState(null); // { msg, type: 'success'|'error' }
+  const [toast, setToast]   = useState(null);
 
   // ── Toast helper ────────────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // ── Fetch current price when symbol changes ────────────────────────────────
+  useEffect(() => {
+    const fetchCurrentPrice = async () => {
+      if (formData.symbol && (formData.asset_type === "stock" || formData.asset_type === "etf")) {
+        try {
+          const response = await API.get(`/stocks/price/${formData.symbol}`);
+          setCurrentPrice(response.data.price);
+        } catch (error) {
+          console.error("Failed to fetch price", error);
+          setCurrentPrice(null);
+        }
+      } else {
+        setCurrentPrice(null);
+      }
+    };
+    fetchCurrentPrice();
+  }, [formData.symbol, formData.asset_type]);
+
+  // ── Calculate based on units entered ───────────────────────────────────────
+  const handleUnitsChange = (e) => {
+    const units = e.target.value;
+    setFormData(prev => ({ ...prev, units, amount: "" }));
+    
+    if (currentPrice && units && parseFloat(units) > 0) {
+      const totalAmount = parseFloat(units) * parseFloat(currentPrice);
+      setFormData(prev => ({ 
+        ...prev, 
+        units, 
+        avg_buy_price: currentPrice,
+        amount: totalAmount.toFixed(2)
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, units, avg_buy_price: currentPrice || "" }));
+    }
+  };
+
+  // ── Calculate based on amount entered ──────────────────────────────────────
+  const handleAmountChange = (e) => {
+    const amount = e.target.value;
+    setFormData(prev => ({ ...prev, amount, units: "" }));
+    
+    if (currentPrice && amount && parseFloat(amount) > 0) {
+      const calculatedUnits = parseFloat(amount) / parseFloat(currentPrice);
+      setFormData(prev => ({ 
+        ...prev, 
+        amount,
+        units: calculatedUnits.toFixed(4),
+        avg_buy_price: currentPrice
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, amount }));
+    }
   };
 
   // ── Fetch investments ────────────────────────────────────────────────────────
@@ -60,13 +117,28 @@ function Portfolio() {
       showToast("Please select an asset type and symbol", "error");
       return;
     }
+
+    let finalUnits = formData.units;
+    let finalBuyPrice = formData.avg_buy_price;
+
+    // If amount mode was used, calculate units and buy price
+    if (calculationMode === "amount" && formData.amount && currentPrice) {
+      finalUnits = (parseFloat(formData.amount) / parseFloat(currentPrice)).toFixed(4);
+      finalBuyPrice = currentPrice;
+    }
+
+    if (!finalUnits || parseFloat(finalUnits) <= 0) {
+      showToast("Please enter valid units or amount", "error");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await API.post("/investments/", {
         symbol:        formData.symbol,
         asset_type:    formData.asset_type,
-        units:         Number(formData.units),
-        avg_buy_price: Number(formData.avg_buy_price),
+        units:         Number(finalUnits),
+        avg_buy_price: Number(finalBuyPrice || currentPrice)
       });
       resetForm();
       fetchInvestments(true);
@@ -83,7 +155,10 @@ function Portfolio() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await API.put(`/investments/${editId}`, formData);
+      await API.put(`/investments/${editId}`, {
+        units: Number(formData.units),
+        avg_buy_price: Number(formData.avg_buy_price)
+      });
       resetForm();
       fetchInvestments(true);
       showToast("Investment updated!");
@@ -108,18 +183,22 @@ function Portfolio() {
 
   const handleEdit = (inv) => {
     setEditId(inv.id);
+    setCalculationMode("units");
     setFormData({
       symbol:        inv.symbol,
       asset_type:    inv.asset_type,
       units:         inv.units,
       avg_buy_price: inv.avg_buy_price,
+      amount:        (inv.units * inv.avg_buy_price).toFixed(2)
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const resetForm = () => {
     setEditId(null);
-    setFormData({ symbol: "", asset_type: "", units: "", avg_buy_price: "" });
+    setCalculationMode("units");
+    setCurrentPrice(null);
+    setFormData({ symbol: "", asset_type: "", units: "", avg_buy_price: "", amount: "" });
   };
 
   const refreshPrices = async () => {
@@ -178,6 +257,10 @@ function Portfolio() {
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-10px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
         }
       `}</style>
 
@@ -248,6 +331,15 @@ function Portfolio() {
           {editId ? " Update Investment" : "➕ Add Investment"}
         </h2>
 
+        {/* Current Price Display */}
+        {currentPrice && !editId && (
+          <div style={{ marginBottom: "16px", padding: "10px 14px", background: dark ? "rgba(99,102,241,0.15)" : "#eef2ff", borderRadius: "10px" }}>
+            <p style={{ fontSize: "13px", color: dark ? "#a5b4fc" : "#4f46e5", margin: 0 }}>
+              Current Market Price: <strong>₹{currentPrice}</strong> per unit
+            </p>
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
 
           {/* Asset Type */}
@@ -283,8 +375,7 @@ function Portfolio() {
                 onSelect={(stock) =>
                   setFormData(prev => ({
                     ...prev,
-                    symbol: stock.symbol,
-                    avg_buy_price: stock.price > 0 ? stock.price : prev.avg_buy_price,
+                    symbol: stock.symbol
                   }))
                 }
               />
@@ -300,46 +391,113 @@ function Portfolio() {
             )}
           </div>
 
-          {/* Units */}
-          <div>
-            <label style={{ fontSize: "12px", fontWeight: "600", color: labelC, display: "block", marginBottom: "6px" }}>
-              Units
-            </label>
-            <input
-              name="units"
-              type="number"
-              min="0.001"
-              step="any"
-              placeholder="e.g. 10"
-              value={formData.units}
-              onChange={handleChange}
-              style={inputStyle}
-              required
-            />
-          </div>
+        </div>
 
-          {/* Buy Price */}
+        {/* Calculation Mode Toggle - Only show for stocks/ETFs with current price */}
+        {currentPrice && !editId && (formData.asset_type === "stock" || formData.asset_type === "etf") && (
+          <div style={{ display: "flex", gap: "20px", marginTop: "16px", marginBottom: "16px", padding: "10px 0", borderTop: `1px solid ${formBorder}`, borderBottom: `1px solid ${formBorder}` }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+              <input
+                type="radio"
+                value="units"
+                checked={calculationMode === "units"}
+                onChange={() => {
+                  setCalculationMode("units");
+                  setFormData(prev => ({ ...prev, amount: "" }));
+                }}
+              />
+              <span style={{ fontSize: "13px", color: labelC }}>Invest by Units</span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+              <input
+                type="radio"
+                value="amount"
+                checked={calculationMode === "amount"}
+                onChange={() => {
+                  setCalculationMode("amount");
+                  setFormData(prev => ({ ...prev, units: "" }));
+                }}
+              />
+              <span style={{ fontSize: "13px", color: labelC }}>Invest by Amount (₹)</span>
+            </label>
+          </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
+
+          {/* Units Field */}
+          {calculationMode === "units" && (
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "600", color: labelC, display: "block", marginBottom: "6px" }}>
+                Number of Units
+              </label>
+              <input
+                name="units"
+                type="number"
+                min="0.001"
+                step="any"
+                placeholder="e.g. 10"
+                value={formData.units}
+                onChange={handleUnitsChange}
+                style={inputStyle}
+                required={calculationMode === "units"}
+              />
+            </div>
+          )}
+
+          {/* Amount Field */}
+          {calculationMode === "amount" && (
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "600", color: labelC, display: "block", marginBottom: "6px" }}>
+                Amount to Invest (₹)
+              </label>
+              <input
+                name="amount"
+                type="number"
+                min="0.01"
+                step="any"
+                placeholder="e.g. 50000"
+                value={formData.amount}
+                onChange={handleAmountChange}
+                style={inputStyle}
+                required={calculationMode === "amount"}
+              />
+            </div>
+          )}
+
+          {/* Buy Price (Auto-calculated, read-only) */}
           <div>
             <label style={{ fontSize: "12px", fontWeight: "600", color: labelC, display: "block", marginBottom: "6px" }}>
-              Buy Price (₹)
+              Buy Price (₹) {currentPrice && <span style={{ fontWeight: "normal", fontSize: "10px" }}>(auto-filled)</span>}
             </label>
             <input
               name="avg_buy_price"
               type="number"
-              min="0.01"
               step="any"
-              placeholder="e.g. 1500"
-              value={formData.avg_buy_price}
-              onChange={handleChange}
-              style={inputStyle}
-              required
+              placeholder="Auto-calculated"
+              value={formData.avg_buy_price || currentPrice || ""}
+              readOnly
+              style={{ ...inputStyle, background: dark ? "#374151" : "#f3f4f6", cursor: "not-allowed" }}
             />
           </div>
+
+          {/* Total Value Display */}
+          {currentPrice && (formData.units || formData.amount) && !editId && (
+            <div>
+              <label style={{ fontSize: "12px", fontWeight: "600", color: labelC, display: "block", marginBottom: "6px" }}>
+                Total Investment Value
+              </label>
+              <div style={{ ...inputStyle, background: dark ? "#374151" : "#f3f4f6", fontWeight: "bold", color: "#10b981" }}>
+                ₹{calculationMode === "units" && formData.units ? (parseFloat(formData.units) * (formData.avg_buy_price || currentPrice)).toLocaleString('en-IN') : 
+                  calculationMode === "amount" && formData.amount ? parseFloat(formData.amount).toLocaleString('en-IN') : "0"}
+              </div>
+            </div>
+          )}
 
         </div>
 
         {/* Buttons */}
-        <div style={{ display: "flex", gap: "10px", marginTop: "18px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "10px", marginTop: "20px", flexWrap: "wrap" }}>
           <button
             type="submit"
             disabled={submitting}
