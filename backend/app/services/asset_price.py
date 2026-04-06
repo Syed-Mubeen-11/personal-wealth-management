@@ -1,57 +1,67 @@
 import requests
-import os
-from dotenv import load_dotenv
-from app.services.yahoo_finance import get_yahoo_price_with_retry
+import time
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-load_dotenv(os.path.join(BASE_DIR, ".env"))
-
-ALPHAVANTAGE_API_KEY = os.getenv("ALPHAVANTAGE_API_KEY")
-
-
-def get_alpha_vantage_price(symbol):
-    """Fetch price from Alpha Vantage"""
+def get_yahoo_price(symbol):
+    """Fetch current price from Yahoo Finance"""
     try:
-        url = "https://www.alphavantage.co/query"
-        params = {
-            "function": "GLOBAL_QUOTE",
-            "symbol": symbol,
-            "apikey": ALPHAVANTAGE_API_KEY
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        response = requests.get(url, params=params, timeout=10)
+        
+        response = requests.get(url, headers=headers, timeout=10)
         data = response.json()
         
-        if "Global Quote" in data and data["Global Quote"]:
-            price = data["Global Quote"].get("05. price")
+        if data.get('chart', {}).get('result'):
+            result = data['chart']['result'][0]
+            meta = result.get('meta', {})
+            price = meta.get('regularMarketPrice')
+            
             if price:
-                print(f"✅ Alpha Vantage: {symbol} = ₹{price}")
+                print(f"✅ Yahoo: {symbol} = ₹{price}")
                 return float(price)
+            
+            indicators = result.get('indicators', {})
+            quote = indicators.get('quote', [{}])[0]
+            price = quote.get('close', [None])[-1]
+            if price:
+                print(f"✅ Yahoo: {symbol} = ₹{price}")
+                return float(price)
+        
+        print(f"⚠️ Yahoo: No data for {symbol}")
         return None
+        
     except Exception as e:
-        print(f"❌ Alpha Vantage error: {e}")
+        print(f"❌ Yahoo Finance error for {symbol}: {e}")
         return None
+
+
+def get_yahoo_price_with_retry(symbol, max_retries=2):
+    """Fetch price with retry logic"""
+    for attempt in range(max_retries):
+        price = get_yahoo_price(symbol)
+        if price:
+            return price
+        if attempt < max_retries - 1:
+            time.sleep(1)
+    return None
 
 
 def get_asset_price(symbol: str, asset_type: str):
-    """Fetch price using Yahoo Finance for Indian stocks, Alpha Vantage for others"""
+    """Fetch price using Yahoo Finance for all stocks and ETFs"""
     
     print(f"🔍 Fetching price for {symbol} ({asset_type})")
     
     try:
-        # STOCK / ETF
+        # STOCK / ETF - Use Yahoo Finance only
         if asset_type in ["stock", "etf"]:
-            # Check if it's an Indian stock (ends with .NS or .BSE)
-            if symbol.endswith('.NS') or symbol.endswith('.BSE'):
-                # Use Yahoo Finance for Indian stocks
-                price = get_yahoo_price_with_retry(symbol)
-                if price:
-                    return price
-                # Fallback to Alpha Vantage if Yahoo fails
-                print(f"⚠️ Yahoo failed, trying Alpha Vantage")
-                return get_alpha_vantage_price(symbol)
+            price = get_yahoo_price_with_retry(symbol)
+            if price:
+                return price
             else:
-                # Use Alpha Vantage for US stocks
-                return get_alpha_vantage_price(symbol)
+                print(f"⚠️ Could not fetch price for {symbol}")
+                return None
 
         # MUTUAL FUND
         elif asset_type == "mutual_fund":
