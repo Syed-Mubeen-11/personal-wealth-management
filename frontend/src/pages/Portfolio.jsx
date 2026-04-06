@@ -465,19 +465,23 @@ function Portfolio() {
             </div>
           )}
 
-          {/* Buy Price (Auto-calculated, read-only) */}
+          {/* Buy Price */}
           <div>
             <label style={{ fontSize: "12px", fontWeight: "600", color: labelC, display: "block", marginBottom: "6px" }}>
-              Buy Price (₹) {currentPrice && <span style={{ fontWeight: "normal", fontSize: "10px" }}>(auto-filled)</span>}
+              Buy Price (₹)
+              {currentPrice && (formData.asset_type === "stock" || formData.asset_type === "etf") && (
+                <span style={{ fontWeight: "normal", fontSize: "10px", marginLeft: "8px" }}>(market: ₹{currentPrice})</span>
+              )}
             </label>
             <input
               name="avg_buy_price"
               type="number"
               step="any"
-              placeholder="Auto-calculated"
-              value={formData.avg_buy_price || currentPrice || ""}
-              readOnly
-              style={{ ...inputStyle, background: dark ? "#374151" : "#f3f4f6", cursor: "not-allowed" }}
+              placeholder="Enter buy price"
+              value={formData.avg_buy_price}
+              onChange={handleChange}
+              style={inputStyle}
+              required
             />
           </div>
 
