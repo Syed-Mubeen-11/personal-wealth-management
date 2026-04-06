@@ -8,7 +8,7 @@ from app.core.auth import get_current_user
 from datetime import datetime
 from app.models.transactions import Transaction, TransactionTypeEnum
 from app.services.asset_price import get_asset_price
-from app.tasks.price_refresh import refresh_all_prices
+# from app.tasks.price_refresh import refresh_all_prices  # Commented out for Render
 
 router = APIRouter()
 
@@ -181,11 +181,30 @@ def get_historical_portfolio(
     
     return {"labels": labels, "values": values}
 
-# ── Refresh All Prices — MUST be before /{id} routes ────────────────────────
+
+# ── Refresh All Prices (Direct version without Celery) ────────────────────────
 @router.post("/refresh-prices")
-def refresh_prices():
-    refresh_all_prices.delay()
-    return {"message": "Background refresh started"}
+def refresh_prices(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.services.asset_price import get_asset_price
+    from datetime import datetime
+    
+    investments = db.query(Investment).filter(Investment.user_id == current_user.id).all()
+    updated_count = 0
+    
+    for inv in investments:
+        try:
+            price = get_asset_price(inv.symbol, inv.asset_type)
+            if price and price > 0:
+                inv.last_price = price
+                inv.current_value = float(inv.units) * price
+                inv.last_price_at = datetime.utcnow()
+                updated_count += 1
+                print(f"✅ Updated {inv.symbol}: ₹{price}")
+        except Exception as e:
+            print(f"❌ Error updating {inv.symbol}: {e}")
+    
+    db.commit()
+    return {"message": f"Updated {updated_count} out of {len(investments)} investments"}
 
 
 # ── Delete Investment ────────────────────────────────────────────────────────
