@@ -1,58 +1,64 @@
 import requests
-import os
-from dotenv import load_dotenv
-
-# Load .env only if it exists (for local development)
-try:
-    load_dotenv()
-except:
-    pass  # On Render, .env file doesn't exist
-
-API_KEY = os.getenv("ALPHAVANTAGE_API_KEY")
+import time
 
 def search_stocks(keyword: str, asset_type: str = None):
-    if not API_KEY:
-        print("ERROR: No API key found!")
+    """Search stocks using Yahoo Finance - works for Indian stocks"""
+    
+    if not keyword or len(keyword) < 2:
         return []
     
-    url = "https://www.alphavantage.co/query"
+    # Yahoo Finance search endpoint
+    url = "https://query1.finance.yahoo.com/v1/finance/search"
     params = {
-        "function": "SYMBOL_SEARCH",
-        "keywords": keyword,
-        "apikey": API_KEY
+        "q": keyword,
+        "quotesCount": 15,
+        "newsCount": 0,
+        "enableFuzzyQuery": False
     }
     
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    
+    # Small delay to avoid rate limits
+    time.sleep(0.3)
+    
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        
+        # Handle rate limit
+        if response.status_code == 429:
+            time.sleep(2)
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+        
         data = response.json()
         
-        if "Error Message" in data:
-            print("API Error:", data["Error Message"])
-            return []
-        
         results = []
-        for item in data.get("bestMatches", []):
-            symbol = item.get("1. symbol", "")
-            name = item.get("2. name", "")
-            type_str = item.get("3. type", "").lower()
-
-            if asset_type:
-                at_lower = asset_type.lower()
-                if at_lower == "stock" and "equity" not in type_str: 
-                    continue
-                if at_lower == "etf" and "etf" not in type_str: 
-                    continue
-                if at_lower == "mutual_fund" and "mutual fund" not in type_str: 
-                    continue
-
+        for quote in data.get("quotes", []):
+            symbol = quote.get("symbol", "")
+            name = quote.get("shortname", quote.get("longname", ""))
+            quote_type = quote.get("quoteType", "").lower()
+            
+            # Map to your asset types
+            if quote_type == "equity":
+                mapped_type = "stock"
+            elif quote_type == "etf":
+                mapped_type = "etf"
+            else:
+                mapped_type = "mutual_fund"
+            
+            # Filter by asset_type if provided
+            if asset_type and asset_type != mapped_type:
+                continue
+            
             results.append({
                 "symbol": symbol,
                 "name": name,
-                "type": type_str
+                "type": mapped_type
             })
-
+        
         return results[:10]
         
     except Exception as e:
-        print(f"Request error: {e}")
+        print(f"Search error: {e}")
         return []
