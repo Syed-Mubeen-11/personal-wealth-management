@@ -2,7 +2,11 @@ import requests
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env only if it exists (for local development)
+try:
+    load_dotenv()
+except:
+    pass  # On Render, .env file doesn't exist
 
 API_KEY = os.getenv("ALPHAVANTAGE_API_KEY")
 
