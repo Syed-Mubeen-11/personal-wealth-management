@@ -7,7 +7,6 @@ def search_stocks(keyword: str, asset_type: str = None):
     if not keyword or len(keyword) < 2:
         return []
     
-    # Yahoo Finance search endpoint
     url = "https://query1.finance.yahoo.com/v1/finance/search"
     params = {
         "q": keyword,
@@ -20,13 +19,11 @@ def search_stocks(keyword: str, asset_type: str = None):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
     
-    # Small delay to avoid rate limits
     time.sleep(0.3)
     
     try:
         response = requests.get(url, params=params, headers=headers, timeout=10)
         
-        # Handle rate limit
         if response.status_code == 429:
             time.sleep(2)
             response = requests.get(url, params=params, headers=headers, timeout=10)
@@ -39,7 +36,6 @@ def search_stocks(keyword: str, asset_type: str = None):
             name = quote.get("shortname", quote.get("longname", ""))
             quote_type = quote.get("quoteType", "").lower()
             
-            # Map to your asset types
             if quote_type == "equity":
                 mapped_type = "stock"
             elif quote_type == "etf":
@@ -47,7 +43,6 @@ def search_stocks(keyword: str, asset_type: str = None):
             else:
                 mapped_type = "mutual_fund"
             
-            # Filter by asset_type if provided
             if asset_type and asset_type != mapped_type:
                 continue
             
